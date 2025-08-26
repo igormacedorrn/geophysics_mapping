@@ -23,13 +23,14 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction
+from qgis.PyQt.QtWidgets import QAction, QTextEdit
 from qgis.gui import QgsFileWidget
 from qgis.PyQt import uic
 from qgis.core import QgsProject, QgsPrintLayout, QgsReadWriteContext
 from qgis.PyQt.QtXml import QDomDocument
 
-import os.path
+import os
+import re
 
 
 class GeophysicsMapping:
@@ -189,6 +190,19 @@ class GeophysicsMapping:
             if not os.path.exists(template_path):
                 raise FileNotFoundError("Template file not found.")
 
+            # Get layout name from QTextEdit and validate
+            layout_name = "Geophysics_Map"
+            try:
+                name_widget = self.dlg.findChild(QTextEdit, "MapLayoutTextEdit")
+                if name_widget:
+                    user_text = name_widget.toPlainText().strip()
+                    # Remove invalid characters
+                    user_text = re.sub(r'[\\/:*?"<>|]', "", user_text)
+                    if user_text:
+                        layout_name = user_text
+            except Exception as e:
+                print(f"Error accessing MapLayoutTextEdit: {e}")
+
             # Load the template XML
             with open(template_path, "r", encoding="utf-8") as file:
                 template_content = file.read()
@@ -197,6 +211,13 @@ class GeophysicsMapping:
 
             # Create and initialize layout
             project = QgsProject.instance()
+            layout_manager = project.layoutManager()
+
+            # Remove existing layout with same name
+            existing_layout = layout_manager.layoutByName(layout_name)
+            if existing_layout:
+                layout_manager.removeLayout(existing_layout)
+
             layout = QgsPrintLayout(project)
             layout.initializeDefaults()
 
@@ -206,12 +227,12 @@ class GeophysicsMapping:
                 raise RuntimeError("Failed to load layout from template.")
 
             # Add layout to project
-            layout.setName("Geophysics_Map")
-            project.layoutManager().addLayout(layout)
+            layout.setName(layout_name)
+            layout_manager.addLayout(layout)
 
             # Open layout designer
             self.iface.openLayoutDesigner(layout)
 
-            print("Layout created and opened successfully.")
+            print(f"Layout '{layout_name}' created and opened successfully.")
         except Exception as e:
             print(f"Error creating layout: {e}")

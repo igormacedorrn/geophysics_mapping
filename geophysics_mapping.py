@@ -31,8 +31,6 @@ from qgis.core import (
     QgsPrintLayout,
     QgsReadWriteContext,
     QgsRasterLayer,
-    QgsMultiBandColorRenderer,
-    QgsRasterTransparency,
     QgsLayoutItemMap,
     QgsMapLayerType,
 )
@@ -180,22 +178,6 @@ class GeophysicsMapping:
             print("Failed to load raster layer.")
             return None
 
-    def apply_white_transparency(self, raster_layer):
-        if raster_layer.bandCount() >= 3:
-            renderer = QgsMultiBandColorRenderer(raster_layer.dataProvider(), 1, 2, 3)
-            transparency = QgsRasterTransparency()
-            white_pixel = QgsRasterTransparency.TransparentSingleValuePixel()
-            white_pixel.red = 255
-            white_pixel.green = 255
-            white_pixel.blue = 255
-            white_pixel.percentTransparent = 100.0
-            transparency.addTransparentSingleValuePixel(white_pixel)
-            renderer.setRasterTransparency(transparency)
-            raster_layer.setRenderer(renderer)
-            print("Transparency applied to white pixels.")
-        else:
-            print("Raster is not RGB — transparency not applied.")
-
     def create_layout_from_template(self):
         try:
             print("CreatePushButton clicked — starting layout creation.")
@@ -240,18 +222,11 @@ class GeophysicsMapping:
             if os.path.exists(raster_path):
                 raster_layer = self.get_or_load_raster_layer(raster_path)
                 if raster_layer:
-                    self.apply_white_transparency(raster_layer)
-
                     map_item = layout.itemById("SatMap")
                     if isinstance(map_item, QgsLayoutItemMap):
                         map_item.setLayers([raster_layer])
-                        canvas_extent = self.iface.mapCanvas().extent()
-                        if not canvas_extent.isEmpty():
-                            map_item.setExtent(canvas_extent)
-                            map_item.refresh()
-                            print("Raster linked and extent set to canvas.")
-                        else:
-                            print("Canvas extent is empty — cannot apply to layout.")
+                        map_item.refresh()
+                        print("Raster linked to layout item 'SatMap'.")
                     else:
                         print("Layout item 'SatMap' not found or not a map.")
                 else:

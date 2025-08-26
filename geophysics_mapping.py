@@ -32,6 +32,7 @@ from qgis.core import (
     QgsReadWriteContext,
     QgsRasterLayer,
     QgsLayoutItemMap,
+    QgsLayoutItemPicture,
     QgsMapLayerType,
 )
 from qgis.PyQt.QtXml import QDomDocument
@@ -183,6 +184,7 @@ class GeophysicsMapping:
             print("CreatePushButton clicked — starting layout creation.")
             template_path = self.dlg.TemplatemQgsFileWidget.filePath()
             raster_path = self.dlg.GeotiffQgsFileWidget.filePath()
+            legend_path = self.dlg.LegendQgsFileWidget.filePath()
 
             if not os.path.exists(template_path):
                 raise FileNotFoundError("Template file not found.")
@@ -218,21 +220,40 @@ class GeophysicsMapping:
             layout.setName(layout_name)
             layout_manager.addLayout(layout)
 
-            raster_layer = None
+            # Link raster to map item and zoom to raster extent
             if os.path.exists(raster_path):
                 raster_layer = self.get_or_load_raster_layer(raster_path)
                 if raster_layer:
                     map_item = layout.itemById("SatMap")
                     if isinstance(map_item, QgsLayoutItemMap):
                         map_item.setLayers([raster_layer])
-                        map_item.refresh()
-                        print("Raster linked to layout item 'SatMap'.")
+                        raster_extent = raster_layer.extent()
+                        if not raster_extent.isEmpty():
+                            map_item.zoomToExtent(raster_extent)
+                            map_item.refresh()
+                            print("Map scale adjusted to fit raster extent.")
+                        else:
+                            print("Raster extent is empty — cannot zoom.")
                     else:
                         print("Layout item 'SatMap' not found or not a map.")
                 else:
                     print("Raster layer invalid.")
             else:
                 print("Raster file not found.")
+
+            # Insert legend image
+            if os.path.exists(legend_path):
+                legend_item = layout.itemById("Legend (Oasis)")
+                if isinstance(legend_item, QgsLayoutItemPicture):
+                    legend_item.setPicturePath(legend_path)
+                    legend_item.refresh()
+                    print("Legend image inserted into layout.")
+                else:
+                    print(
+                        "Layout item 'Legend (Oasis)' not found or not a picture item."
+                    )
+            else:
+                print("Legend image file not found.")
 
             print("Opening layout designer...")
             self.iface.openLayoutDesigner(layout)

@@ -46,7 +46,6 @@ class GeophysicsMapping:
     """Main plugin class."""
 
     def __init__(self, iface):
-        """Initialize plugin and locale."""
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
         locale = QSettings().value("locale/userLocale")[0:2]
@@ -64,7 +63,6 @@ class GeophysicsMapping:
         self.first_start = None
 
     def tr(self, message):
-        """Translate string."""
         return QCoreApplication.translate("GeophysicsMapping", message)
 
     def add_action(
@@ -79,7 +77,6 @@ class GeophysicsMapping:
         whats_this=None,
         parent=None,
     ):
-        """Add action to toolbar and menu."""
         icon = QIcon(icon_path)
         action = QAction(icon, text, parent)
         action.triggered.connect(callback)
@@ -99,7 +96,6 @@ class GeophysicsMapping:
         return action
 
     def initGui(self):
-        """Add plugin icon and menu entry."""
         icon_path = ":/plugins/geophysics_mapping/icon.png"
         self.add_action(
             icon_path,
@@ -110,56 +106,49 @@ class GeophysicsMapping:
         self.first_start = True
 
     def unload(self):
-        """Remove plugin UI elements."""
         for action in self.actions:
             self.iface.removePluginMenu(self.menu, action)
             self.iface.removeToolBarIcon(action)
 
     def run(self):
-        """Launch plugin dialog."""
         if self.first_start:
             self.first_start = False
-
             ui_path = os.path.join(self.plugin_dir, "geophysics_mapping_dialog_base.ui")
             self.dlg = uic.loadUi(ui_path)
 
             try:
-                template_widget = self.dlg.findChild(
-                    QgsFileWidget, "TemplatemQgsFileWidget"
+                self.dlg.TemplatemQgsFileWidget.setDialogTitle(
+                    "Select Geophysics Template"
                 )
-                if template_widget:
-                    template_widget.setDialogTitle("Select Geophysics Template")
-                    template_widget.setFilter("QGIS Layout Template (*.qpt)")
-                    default_template = os.path.join(
-                        self.plugin_dir, "Geophysics_SurveyMaps.qpt"
-                    )
-                    template_widget.setFilePath(default_template)
+                self.dlg.TemplatemQgsFileWidget.setFilter(
+                    "QGIS Layout Template (*.qpt)"
+                )
+                default_template = os.path.join(
+                    self.plugin_dir, "Geophysics_SurveyMaps.qpt"
+                )
+                self.dlg.TemplatemQgsFileWidget.setFilePath(default_template)
             except Exception as e:
                 print(f"Error configuring TemplatemQgsFileWidget: {e}")
 
             try:
-                geotiff_widget = self.dlg.findChild(
-                    QgsFileWidget, "GeotiffQgsFileWidget"
+                self.dlg.GeotiffQgsFileWidget.setDialogTitle(
+                    "Select GeoTIFF Raster File"
                 )
-                if geotiff_widget:
-                    geotiff_widget.setDialogTitle("Select GeoTIFF Raster File")
-                    geotiff_widget.setFilter("GeoTIFF (*.tif *.tiff)")
-                    default_geotiff = os.path.join(
-                        self.plugin_dir, "default_geotiff.tif"
-                    )
-                    geotiff_widget.setFilePath(default_geotiff)
+                self.dlg.GeotiffQgsFileWidget.setFilter("GeoTIFF (*.tif *.tiff)")
+                default_geotiff = os.path.join(self.plugin_dir, "default_geotiff.tif")
+                self.dlg.GeotiffQgsFileWidget.setFilePath(default_geotiff)
             except Exception as e:
                 print(f"Error configuring GeotiffQgsFileWidget: {e}")
 
             try:
-                legend_widget = self.dlg.findChild(QgsFileWidget, "LegendQgsFileWidget")
-                if legend_widget:
-                    legend_widget.setDialogTitle("Select Legend Image or File")
-                    legend_widget.setFilter(
-                        "Image Files (*.png *.jpg *.jpeg *.svg);;PDF Files (*.pdf)"
-                    )
-                    default_legend = os.path.join(self.plugin_dir, "default_legend.png")
-                    legend_widget.setFilePath(default_legend)
+                self.dlg.LegendQgsFileWidget.setDialogTitle(
+                    "Select Legend Image or File"
+                )
+                self.dlg.LegendQgsFileWidget.setFilter(
+                    "Image Files (*.png *.jpg *.jpeg *.svg);;PDF Files (*.pdf)"
+                )
+                default_legend = os.path.join(self.plugin_dir, "default_legend.png")
+                self.dlg.LegendQgsFileWidget.setFilePath(default_legend)
             except Exception as e:
                 print(f"Error configuring LegendQgsFileWidget: {e}")
 
@@ -167,13 +156,13 @@ class GeophysicsMapping:
                 self.dlg.CreatePushButton.clicked.connect(
                     self.create_layout_from_template
                 )
+                print("CreatePushButton connected.")
             except Exception as e:
                 print(f"Error connecting CreatePushButton: {e}")
 
         self.dlg.show()
 
     def get_or_load_raster_layer(self, raster_path):
-        """Return existing raster layer if already loaded, or load it."""
         for layer in QgsProject.instance().mapLayers().values():
             if (
                 layer.type() == QgsMapLayerType.RasterLayer
@@ -192,21 +181,24 @@ class GeophysicsMapping:
             return None
 
     def apply_white_transparency(self, raster_layer):
-        """Apply transparency to white pixels."""
-        renderer = QgsMultiBandColorRenderer(raster_layer.dataProvider(), 1, 2, 3)
-        transparency = QgsRasterTransparency()
-        white_pixel = QgsRasterTransparency.TransparentSingleValuePixel()
-        white_pixel.red = 255
-        white_pixel.green = 255
-        white_pixel.blue = 255
-        white_pixel.percentTransparent = 100.0
-        transparency.addTransparentSingleValuePixel(white_pixel)
-        renderer.setRasterTransparency(transparency)
-        raster_layer.setRenderer(renderer)
+        if raster_layer.bandCount() >= 3:
+            renderer = QgsMultiBandColorRenderer(raster_layer.dataProvider(), 1, 2, 3)
+            transparency = QgsRasterTransparency()
+            white_pixel = QgsRasterTransparency.TransparentSingleValuePixel()
+            white_pixel.red = 255
+            white_pixel.green = 255
+            white_pixel.blue = 255
+            white_pixel.percentTransparent = 100.0
+            transparency.addTransparentSingleValuePixel(white_pixel)
+            renderer.setRasterTransparency(transparency)
+            raster_layer.setRenderer(renderer)
+            print("Transparency applied to white pixels.")
+        else:
+            print("Raster is not RGB — transparency not applied.")
 
     def create_layout_from_template(self):
-        """Create a new layout from the selected .qpt template and open it."""
         try:
+            print("CreatePushButton clicked — starting layout creation.")
             template_path = self.dlg.TemplatemQgsFileWidget.filePath()
             raster_path = self.dlg.GeotiffQgsFileWidget.filePath()
 
@@ -215,12 +207,10 @@ class GeophysicsMapping:
 
             layout_name = "Geophysics_Map"
             try:
-                name_widget = self.dlg.findChild(QTextEdit, "MapLayoutTextEdit")
-                if name_widget:
-                    user_text = name_widget.toPlainText().strip()
-                    user_text = re.sub(r'[\\/:*?"<>|]', "", user_text)
-                    if user_text:
-                        layout_name = user_text
+                user_text = self.dlg.MapLayoutTextEdit.toPlainText().strip()
+                user_text = re.sub(r'[\\/:*?"<>|]', "", user_text)
+                if user_text:
+                    layout_name = user_text
             except Exception as e:
                 print(f"Error accessing MapLayoutTextEdit: {e}")
 
@@ -255,9 +245,13 @@ class GeophysicsMapping:
                     map_item = layout.itemById("SatMap")
                     if isinstance(map_item, QgsLayoutItemMap):
                         map_item.setLayers([raster_layer])
-                        map_item.setExtent(self.iface.mapCanvas().extent())
-                        map_item.refresh()
-                        print("Raster linked and extent set to canvas.")
+                        canvas_extent = self.iface.mapCanvas().extent()
+                        if not canvas_extent.isEmpty():
+                            map_item.setExtent(canvas_extent)
+                            map_item.refresh()
+                            print("Raster linked and extent set to canvas.")
+                        else:
+                            print("Canvas extent is empty — cannot apply to layout.")
                     else:
                         print("Layout item 'SatMap' not found or not a map.")
                 else:
@@ -265,6 +259,7 @@ class GeophysicsMapping:
             else:
                 print("Raster file not found.")
 
+            print("Opening layout designer...")
             self.iface.openLayoutDesigner(layout)
             print(f"Layout '{layout_name}' created and opened successfully.")
         except Exception as e:

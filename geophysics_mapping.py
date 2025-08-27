@@ -42,7 +42,16 @@ import re
 
 
 class GeophysicsMapping:
-    """Main plugin class."""
+    DESCRIPTION_PREFIXES = [
+        "Total Field Magnetics",
+        "Total Field Magnetics RTP",
+        "Total Field Magnetics AS",
+        "dBdt Z ch",
+        "Digital Terrain Model",
+        "Altitude Sensor",
+        "Conductivity Depth Slice",
+        "Susceptibility Depth Slice",
+    ]
 
     def __init__(self, iface):
         self.iface = iface
@@ -115,49 +124,26 @@ class GeophysicsMapping:
             ui_path = os.path.join(self.plugin_dir, "geophysics_mapping_dialog_base.ui")
             self.dlg = uic.loadUi(ui_path)
 
-            try:
-                self.dlg.TemplatemQgsFileWidget.setDialogTitle(
-                    "Select Geophysics Template"
-                )
-                self.dlg.TemplatemQgsFileWidget.setFilter(
-                    "QGIS Layout Template (*.qpt)"
-                )
-                default_template = os.path.join(
-                    self.plugin_dir, "Geophysics_SurveyMaps.qpt"
-                )
-                self.dlg.TemplatemQgsFileWidget.setFilePath(default_template)
-            except Exception as e:
-                print(f"Error configuring TemplatemQgsFileWidget: {e}")
+            self.dlg.TemplatemQgsFileWidget.setDialogTitle("Select Geophysics Template")
+            self.dlg.TemplatemQgsFileWidget.setFilter("QGIS Layout Template (*.qpt)")
+            default_template = os.path.join(
+                self.plugin_dir, "Geophysics_SurveyMaps.qpt"
+            )
+            self.dlg.TemplatemQgsFileWidget.setFilePath(default_template)
 
-            try:
-                self.dlg.GeotiffQgsFileWidget.setDialogTitle(
-                    "Select GeoTIFF Raster File"
-                )
-                self.dlg.GeotiffQgsFileWidget.setFilter("GeoTIFF (*.tif *.tiff)")
-                default_geotiff = os.path.join(self.plugin_dir, "default_geotiff.tif")
-                self.dlg.GeotiffQgsFileWidget.setFilePath(default_geotiff)
-            except Exception as e:
-                print(f"Error configuring GeotiffQgsFileWidget: {e}")
+            self.dlg.GeotiffQgsFileWidget.setDialogTitle("Select GeoTIFF Raster File")
+            self.dlg.GeotiffQgsFileWidget.setFilter("GeoTIFF (*.tif *.tiff)")
+            default_geotiff = os.path.join(self.plugin_dir, "default_geotiff.tif")
+            self.dlg.GeotiffQgsFileWidget.setFilePath(default_geotiff)
 
-            try:
-                self.dlg.LegendQgsFileWidget.setDialogTitle(
-                    "Select Legend Image or File"
-                )
-                self.dlg.LegendQgsFileWidget.setFilter(
-                    "Image Files (*.png *.jpg *.jpeg *.svg);;PDF Files (*.pdf)"
-                )
-                default_legend = os.path.join(self.plugin_dir, "default_legend.png")
-                self.dlg.LegendQgsFileWidget.setFilePath(default_legend)
-            except Exception as e:
-                print(f"Error configuring LegendQgsFileWidget: {e}")
+            self.dlg.LegendQgsFileWidget.setDialogTitle("Select Legend Image or File")
+            self.dlg.LegendQgsFileWidget.setFilter(
+                "Image Files (*.png *.jpg *.jpeg *.svg);;PDF Files (*.pdf)"
+            )
+            default_legend = os.path.join(self.plugin_dir, "default_legend.png")
+            self.dlg.LegendQgsFileWidget.setFilePath(default_legend)
 
-            try:
-                self.dlg.CreatePushButton.clicked.connect(
-                    self.create_layout_from_template
-                )
-                print("CreatePushButton connected.")
-            except Exception as e:
-                print(f"Error connecting CreatePushButton: {e}")
+            self.dlg.CreatePushButton.clicked.connect(self.create_layout_from_template)
 
         self.dlg.show()
 
@@ -181,7 +167,6 @@ class GeophysicsMapping:
 
     def create_layout_from_template(self):
         try:
-            print("CreatePushButton clicked — starting layout creation.")
             template_path = self.dlg.TemplatemQgsFileWidget.filePath()
             raster_path = self.dlg.GeotiffQgsFileWidget.filePath()
             legend_path = self.dlg.LegendQgsFileWidget.filePath()
@@ -190,13 +175,10 @@ class GeophysicsMapping:
                 raise FileNotFoundError("Template file not found.")
 
             layout_name = "Geophysics_Map"
-            try:
-                user_text = self.dlg.MapLayoutTextEdit.toPlainText().strip()
-                user_text = re.sub(r'[\\/:*?"<>|]', "", user_text)
-                if user_text:
-                    layout_name = user_text
-            except Exception as e:
-                print(f"Error accessing MapLayoutTextEdit: {e}")
+            user_text = self.dlg.MapLayoutTextEdit.toPlainText().strip()
+            user_text = re.sub(r'[\\/:*?"<>|]', "", user_text)
+            if user_text:
+                layout_name = user_text
 
             with open(template_path, "r", encoding="utf-8") as file:
                 template_content = file.read()
@@ -220,7 +202,6 @@ class GeophysicsMapping:
             layout.setName(layout_name)
             layout_manager.addLayout(layout)
 
-            # Link raster to map item and zoom to raster extent
             if os.path.exists(raster_path):
                 raster_layer = self.get_or_load_raster_layer(raster_path)
                 if raster_layer:
@@ -230,18 +211,46 @@ class GeophysicsMapping:
                         raster_extent = raster_layer.extent()
                         if not raster_extent.isEmpty():
                             map_item.zoomToExtent(raster_extent)
+                            original_scale = map_item.scale()
+                            rounded_scale = round(original_scale, -3)
+                            map_item.setScale(rounded_scale)
                             map_item.refresh()
-                            print("Map scale adjusted to fit raster extent.")
+                            print(
+                                f"Map scale rounded from {original_scale} to {rounded_scale}"
+                            )
                         else:
                             print("Raster extent is empty — cannot zoom.")
                     else:
                         print("Layout item 'SatMap' not found or not a map.")
+
+                    # Extract title and description from filename
+                    basename = os.path.basename(raster_path)
+                    filename = os.path.splitext(basename)[0]
+
+                    title_text = ""
+                    description_text = ""
+
+                    for prefix in self.DESCRIPTION_PREFIXES:
+                        if prefix in filename:
+                            split_index = filename.find(prefix)
+                            title_text = filename[:split_index].strip()
+                            description_text = filename[split_index:].strip()
+                            break
+
+                    title_item = layout.itemById("Title")
+                    if title_item:
+                        title_item.setText(title_text)
+                        print(f"Title set to: {title_text}")
+
+                    desc_item = layout.itemById("Map Description")
+                    if desc_item:
+                        desc_item.setText(description_text)
+                        print(f"Map Description set to: {description_text}")
                 else:
                     print("Raster layer invalid.")
             else:
                 print("Raster file not found.")
 
-            # Insert legend image
             if os.path.exists(legend_path):
                 legend_item = layout.itemById("Legend (Oasis)")
                 if isinstance(legend_item, QgsLayoutItemPicture):
@@ -255,7 +264,6 @@ class GeophysicsMapping:
             else:
                 print("Legend image file not found.")
 
-            print("Opening layout designer...")
             self.iface.openLayoutDesigner(layout)
             print(f"Layout '{layout_name}' created and opened successfully.")
         except Exception as e:

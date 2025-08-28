@@ -23,7 +23,7 @@
 """
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QTextEdit
+from qgis.PyQt.QtWidgets import QAction
 from qgis.gui import QgsFileWidget
 from qgis.PyQt import uic
 from qgis.core import (
@@ -33,6 +33,7 @@ from qgis.core import (
     QgsRasterLayer,
     QgsLayoutItemMap,
     QgsLayoutItemPicture,
+    QgsLayoutItemLabel,
     QgsMapLayerType,
 )
 from qgis.PyQt.QtXml import QDomDocument
@@ -42,16 +43,82 @@ import re
 
 
 class GeophysicsMapping:
-    DESCRIPTION_PREFIXES = [
-        "Total Field Magnetics",
-        "Total Field Magnetics RTP",
-        "Total Field Magnetics AS",
-        "dBdt Z ch",
-        "Digital Terrain Model",
-        "Altitude Sensor",
-        "Conductivity Depth Slice",
-        "Susceptibility Depth Slice",
-    ]
+    DESCRIPTION_LOOKUP = {
+        "Total Field Magnetics": (
+            "Total Magnetic Intensity",
+            "Total Magnetic Intensity (nT)",
+        ),
+        "Total Field Magnetics RTP": (
+            "TMI Reduced to Pole",
+            "Total Magnetic Intensity Reduced to Pole (nT)",
+        ),
+        "Total Field Magnetics RTP 1VD": (
+            "First Vertical Derivative",
+            "First Vertical Derivative : TMI Reduced to Pole (nT/m)",
+        ),
+        "Total Field Magnetics RTP THDR": (
+            "Total Horizontal Gradient",
+            "Total Horizontal Gradient : TMI Reduced to Pole (nT/m)",
+        ),
+        "Total Field Magnetics RTP TDR": (
+            "Tilt Derivative",
+            "Tilt Derivative : TMI Reduced to Pole (rad)",
+        ),
+        "Total Field Magnetics RTP RMI": (
+            "Residual Magnetic Intensity",
+            "IGRF corrected TMI (nT)",
+        ),
+        "Total Field Magnetics RTP Residual 1500 m": (
+            "Residual Filtered - 1500 m",
+            "Residual Filtered : TMI Reduced to Pole (nT)",
+        ),
+        "Total Field Magnetics RTP Regional 1500 m": (
+            "Regional Filtered - 1500 m",
+            "Regional Filtered : TMI Reduced to Pole (nT)",
+        ),
+        "Total Field Magnetics AS": ("Analytical Signal", "Analytical Signal (nT/m)"),
+        "dBdt Z ch10": (
+            "dB/dt z component 0.014 ms after turnoff",
+            "dB/dt z component : channel 10 (pV/(Am^4))",
+        ),
+        "dBdt Z ch15": (
+            "dB/dt z component 0.045 ms after turnoff",
+            "dB/dt z component : channel 15 (pV/(Am^4))",
+        ),
+        "dBdt Z ch20": (
+            "dB/dt z component 0.12 ms after turnoff",
+            "dB/dt z component : channel 20 (pV/(Am^4))",
+        ),
+        "dBdt Z ch25": (
+            "dB/dt z component 0.26 ms after turnoff",
+            "dB/dt z component : channel 25 (pV/(Am^4))",
+        ),
+        "dBdt Z ch30": (
+            "dB/dt z component 0.56 ms after turnoff",
+            "dB/dt z component : channel 30 (pV/(Am^4))",
+        ),
+        "dBdt Z ch35": (
+            "dB/dt z component 1.16 ms after turnoff",
+            "dB/dt z component : channel 35 (pV/(Am^4))",
+        ),
+        "dBdt Z ch40": (
+            "dB/dt z component 2.36 ms after turnoff",
+            "dB/dt z component : channel 40 (pV/(Am^4))",
+        ),
+        "dBdt Z ch45": (
+            "dB/dt z component 4.74 ms after turnoff",
+            "dB/dt z component : channel 45 (pV/(Am^4))",
+        ),
+        "Digital Terrain Model": ("Digital Terrain Model", "Digital Terrain Model (m)"),
+        "Conductivity Depth Slice 25m": (
+            "Conductivity Depth Slice - 25m",
+            "Conductivity (S/m)",
+        ),
+        "Susceptibility Depth Slice 25m": (
+            "Susceptibility Depth Slice - 25m",
+            "Relative Susceptibility (SI)",
+        ),
+    }
 
     def __init__(self, iface):
         self.iface = iface
@@ -153,16 +220,13 @@ class GeophysicsMapping:
                 layer.type() == QgsMapLayerType.RasterLayer
                 and layer.source() == raster_path
             ):
-                print("Raster already loaded — reusing existing layer.")
                 return layer
 
         raster_layer = QgsRasterLayer(raster_path, os.path.basename(raster_path))
         if raster_layer.isValid():
             QgsProject.instance().addMapLayer(raster_layer)
-            print("Raster loaded into project.")
             return raster_layer
         else:
-            print("Failed to load raster layer.")
             return None
 
     def create_layout_from_template(self):
@@ -194,7 +258,6 @@ class GeophysicsMapping:
 
             layout = QgsPrintLayout(project)
             layout.initializeDefaults()
-
             context = QgsReadWriteContext()
             if not layout.loadFromTemplate(doc, context):
                 raise RuntimeError("Failed to load layout from template.")
@@ -226,6 +289,9 @@ class GeophysicsMapping:
                     # Extract title and description from filename
                     basename = os.path.basename(raster_path)
                     filename = os.path.splitext(basename)[0]
+                    filename_parts = filename.split()
+                    if len(filename_parts) > 1:
+                        filename = " ".join(filename_parts[1:])  # Remove first word
 
                     title_text = ""
                     description_text = ""

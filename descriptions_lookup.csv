@@ -1,0 +1,22 @@
+ID;FILENAME;MAP_DESCRIPTION;UNITS;PNG
+1;TotalFieldMagnetics;Total Magnetic Intensity;Total Magnetic Intensity (nT);Total Field Magnetics.png
+2;TotalFieldMagneticsRTP;TMI Reduced to Pole;Total Magnetic Intensity Reduced to Pole (nT);Total Field Magnetics RTP.png
+3;TotalFieldMagneticsRTPVD1;First Vertical Derivative;First Vertical Derivative : TMI Reduced to Pole (nT/m);Total Field Magnetics RTP VD1.png
+4;TotalFieldMagneticsRTPTHDR;Total Horizontal Gradient;Total Horizontal Gradient : TMI Reduced to Pole (nT/m);Total Field Magnetics RTP THDR.png
+5;TotalFieldMagneticsRTPTDR;Tilt Derivative;Tilt Derivative : TMI Reduced to Pole (rad);Total Field Magnetics RTP TDR.png
+6;TotalFieldMagneticsRTPRMI;Residual Magnetic Intensity;IGRF corrected TMI (nT);Total Field Magnetics RTP RMI.png
+7;TotalFieldMagneticsRTPResidual1500m;Residual Filtered - 1500 m;Residual Filtered : TMI Reduced to Pole (nT);Total Field Magnetics RTP Residual 1500 m.png
+8;TotalFieldMagneticsRTPRegional1500m;Regional Filtered - 1500 m;Regional Filtered : TMI Reduced to Pole (nT);Total Field Magnetics RTP Regional 1500 m.png
+9;TotalFieldMagneticsRTPAS;Analytical Signal;Analytical Signal (nT/m);Total Field Magnetics RTP AS.png
+10;dBdtZch10;dB/dt z component 0.014 ms after turnoff;dB/dt z component : channel 10 (pV/(Am^4));dBdt Z ch10.png
+11;dBdtZch15;dB/dt z component 0.045 ms after turnoff;dB/dt z component : channel 15 (pV/(Am^4));dBdt Z ch15.png
+12;dBdtZch20;dB/dt z component 0.12 ms after turnoff;dB/dt z component : channel 20 (pV/(Am^4));dBdt Z ch20.png
+13;dBdtZch25;dB/dt z component 0.26 ms after turnoff;dB/dt z component : channel 25 (pV/(Am^4));dBdt Z ch25.png
+14;dBdtZch30;dB/dt z component 0.56 ms after turnoff;dB/dt z component : channel 30 (pV/(Am^4));dBdt Z ch30.png
+15;dBdtZch35;dB/dt z component 1.16 ms after turnoff;dB/dt z component : channel 35 (pV/(Am^4));dBdt Z ch35.png
+16;dBdtZch40;dB/dt z component 2.36 ms after turnoff;dB/dt z component : channel 40 (pV/(Am^4));dBdt Z ch40.png
+17;dBdtZch45;dB/dt z component 4.74 ms after turnoff;dB/dt z component : channel 45 (pV/(Am^4));dBdt Z ch45.png
+18;DigitalTerrainModel;Digital Terrain Model;Digital Terrain Model (m);Digital Terrain Model.png
+19;ConductivityDepthSlice25m;Conductivity Depth Slice - 25m;Conductivity (S/m);Conductivity 25m.png
+20;SusceptibilityDepthSlice25m;Susceptibility Depth Slice - 25m;Relative Susceptibility (SI);Susceptibility 25m.png
+21;AltitudeSensor;Altitude Sensor;Altitude Sensor (m);Altitude Sensor.png

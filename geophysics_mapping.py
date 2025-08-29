@@ -43,89 +43,6 @@ import re
 
 
 class GeophysicsMapping:
-    DESCRIPTION_LOOKUP = {
-        "Total Field Magnetics": (
-            "Total Magnetic Intensity",
-            "Total Magnetic Intensity (nT)",
-        ),
-        "Total Field Magnetics RTP": (
-            "TMI Reduced to Pole",
-            "Total Magnetic Intensity Reduced to Pole (nT)",
-        ),
-        "Total Field Magnetics RTP 1VD": (
-            "First Vertical Derivative",
-            "First Vertical Derivative : TMI Reduced to Pole (nT/m)",
-        ),
-        "Total Field Magnetics RTP THDR": (
-            "Total Horizontal Gradient",
-            "Total Horizontal Gradient : TMI Reduced to Pole (nT/m)",
-        ),
-        "Total Field Magnetics RTP TDR": (
-            "Tilt Derivative",
-            "Tilt Derivative : TMI Reduced to Pole (rad)",
-        ),
-        "Total Field Magnetics RTP RMI": (
-            "Residual Magnetic Intensity",
-            "IGRF corrected TMI (nT)",
-        ),
-        "Total Field Magnetics RTP Residual 1500 m": (
-            "Residual Filtered - 1500 m",
-            "Residual Filtered : TMI Reduced to Pole (nT)",
-        ),
-        "Total Field Magnetics RTP Regional 1500 m": (
-            "Regional Filtered - 1500 m",
-            "Regional Filtered : TMI Reduced to Pole (nT)",
-        ),
-        "Total Field Magnetics RTP AS": (
-            "Analytical Signal",
-            "Analytical Signal (nT/m)",
-        ),
-        "dBdt Z ch10": (
-            "dB/dt z component 0.014 ms after turnoff",
-            "dB/dt z component : channel 10 (pV/(Am^4))",
-        ),
-        "dBdt Z ch15": (
-            "dB/dt z component 0.045 ms after turnoff",
-            "dB/dt z component : channel 15 (pV/(Am^4))",
-        ),
-        "dBdt Z ch20": (
-            "dB/dt z component 0.12 ms after turnoff",
-            "dB/dt z component : channel 20 (pV/(Am^4))",
-        ),
-        "dBdt Z ch25": (
-            "dB/dt z component 0.26 ms after turnoff",
-            "dB/dt z component : channel 25 (pV/(Am^4))",
-        ),
-        "dBdt Z ch30": (
-            "dB/dt z component 0.56 ms after turnoff",
-            "dB/dt z component : channel 30 (pV/(Am^4))",
-        ),
-        "dBdt Z ch35": (
-            "dB/dt z component 1.16 ms after turnoff",
-            "dB/dt z component : channel 35 (pV/(Am^4))",
-        ),
-        "dBdt Z ch40": (
-            "dB/dt z component 2.36 ms after turnoff",
-            "dB/dt z component : channel 40 (pV/(Am^4))",
-        ),
-        "dBdt Z ch45": (
-            "dB/dt z component 4.74 ms after turnoff",
-            "dB/dt z component : channel 45 (pV/(Am^4))",
-        ),
-        "Digital Terrain Model": (
-            "Digital Terrain Model",
-            "Digital Terrain Model (m)",
-        ),
-        "Conductivity Depth Slice 25m": (
-            "Conductivity Depth Slice - 25m",
-            "Conductivity (S/m)",
-        ),
-        "Susceptibility Depth Slice 25m": (
-            "Susceptibility Depth Slice - 25m",
-            "Relative Susceptibility (SI)",
-        ),
-    }
-
     def __init__(self, iface):
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
@@ -142,6 +59,118 @@ class GeophysicsMapping:
         self.actions = []
         self.menu = self.tr("&Geophysics Mapping")
         self.first_start = None
+
+        # -----------------------------
+        # Internal DESCRIPTION_LOOKUP dictionary
+        # Format: "FILENAME": ("Map Description", "Units", "Legend PNG")
+        # -----------------------------
+        self.DESCRIPTION_LOOKUP = {
+            "TotalFieldMagnetics": (
+                "Total Magnetic Intensity",
+                "Total Magnetic Intensity (nT)",
+                "Total Field Magnetics.png",
+            ),
+            "TotalFieldMagneticsRTP": (
+                "TMI Reduced to Pole",
+                "Total Magnetic Intensity Reduced to Pole (nT)",
+                "Total Field Magnetics RTP.png",
+            ),
+            "TotalFieldMagneticsRTPVD1": (
+                "First Vertical Derivative",
+                "First Vertical Derivative: TMI Reduced to Pole (nT/m)",
+                "Total Field Magnetics RTP VD1.png",
+            ),
+            "TotalFieldMagneticsRTPTHDR": (
+                "Total Horizontal Gradient",
+                "Total Horizontal Gradient: TMI Reduced to Pole (nT/m)",
+                "Total Field Magnetics RTP THDR.png",
+            ),
+            "TotalFieldMagneticsRTPTDR": (
+                "Tilt Derivative",
+                "Tilt Derivative: TMI Reduced to Pole (rad)",
+                "Total Field Magnetics RTP TDR.png",
+            ),
+            "TotalFieldMagneticsRTPRMI": (
+                "Residual Magnetic Intensity",
+                "IGRF corrected TMI (nT)",
+                "Total Field Magnetics RTP RMI.png",
+            ),
+            "TotalFieldMagneticsRTPResidual1500m": (
+                "Residual Filtered - 1500 m",
+                "Residual Filtered: TMI Reduced to Pole (nT)",
+                "Total Field Magnetics RTP Residual 1500 m.png",
+            ),
+            "TotalFieldMagneticsRTPRegional1500m": (
+                "Regional Filtered - 1500 m",
+                "Regional Filtered: TMI Reduced to Pole (nT)",
+                "Total Field Magnetics RTP Regional 1500 m.png",
+            ),
+            "TotalFieldMagneticsRTPAS": (
+                "Analytical Signal",
+                "Analytical Signal (nT/m)",
+                "Total Field Magnetics RTP AS.png",
+            ),
+            "dBdtZch10": (
+                "dB/dt z component 0.014 ms after turnoff",
+                "dB/dt z component: channel 10 (pV/(Am^4))",
+                "dBdt Z ch10.png",
+            ),
+            "dBdtZch15": (
+                "dB/dt z component 0.045 ms after turnoff",
+                "dB/dt z component: channel 15 (pV/(Am^4))",
+                "dBdt Z ch15.png",
+            ),
+            "dBdtZch20": (
+                "dB/dt z component 0.12 ms after turnoff",
+                "dB/dt z component: channel 20 (pV/(Am^4))",
+                "dBdt Z ch20.png",
+            ),
+            "dBdtZch25": (
+                "dB/dt z component 0.26 ms after turnoff",
+                "dB/dt z component: channel 25 (pV/(Am^4))",
+                "dBdt Z ch25.png",
+            ),
+            "dBdtZch30": (
+                "dB/dt z component 0.56 ms after turnoff",
+                "dB/dt z component: channel 30 (pV/(Am^4))",
+                "dBdt Z ch30.png",
+            ),
+            "dBdtZch35": (
+                "dB/dt z component 1.16 ms after turnoff",
+                "dB/dt z component: channel 35 (pV/(Am^4))",
+                "dBdt Z ch35.png",
+            ),
+            "dBdtZch40": (
+                "dB/dt z component 2.36 ms after turnoff",
+                "dB/dt z component: channel 40 (pV/(Am^4))",
+                "dBdt Z ch40.png",
+            ),
+            "dBdtZch45": (
+                "dB/dt z component 4.74 ms after turnoff",
+                "dB/dt z component: channel 45 (pV/(Am^4))",
+                "dBdt Z ch45.png",
+            ),
+            "DigitalTerrainModel": (
+                "Digital Terrain Model",
+                "Digital Terrain Model (m)",
+                "Digital Terrain Model.png",
+            ),
+            "ConductivityDepthSlice25m": (
+                "Conductivity Depth Slice - 25m",
+                "Conductivity (S/m)",
+                "Conductivity 25m.png",
+            ),
+            "SusceptibilityDepthSlice25m": (
+                "Susceptibility Depth Slice - 25m",
+                "Relative Susceptibility (SI)",
+                "Susceptibility 25m.png",
+            ),
+            "AltitudeSensor": (
+                "Altitude Sensor",
+                "Altitude Sensor (m)",
+                "Altitude Sensor.png",
+            ),
+        }
 
     def tr(self, message):
         return QCoreApplication.translate("GeophysicsMapping", message)
@@ -177,7 +206,7 @@ class GeophysicsMapping:
         return action
 
     def initGui(self):
-        icon_path = r"/plugins/geophysics_mapping/icon.png"
+        icon_path = r"/plugins/geophysics_mapping/icon_64.png"
         self.add_action(
             icon_path,
             text=self.tr("Geophysics Mapping"),
@@ -239,16 +268,13 @@ class GeophysicsMapping:
         try:
             template_path = self.dlg.TemplatemQgsFileWidget.filePath()
             raster_path = self.dlg.GeotiffQgsFileWidget.filePath()
-            legend_path = self.dlg.LegendQgsFileWidget.filePath()
+            user_text = self.dlg.MapLayoutTextEdit.toPlainText().strip()
+            layout_name = "Geophysics_Map"
+            if user_text:
+                layout_name = re.sub(r'[\\/:*?"<>|]', "", user_text)
 
             if not os.path.exists(template_path):
                 raise FileNotFoundError("Template file not found.")
-
-            layout_name = "Geophysics_Map"
-            user_text = self.dlg.MapLayoutTextEdit.toPlainText().strip()
-            user_text = re.sub(r'[\\/:*?"<>|]', "", user_text)
-            if user_text:
-                layout_name = user_text
 
             with open(template_path, "r", encoding="utf-8") as file:
                 template_content = file.read()
@@ -271,9 +297,6 @@ class GeophysicsMapping:
             layout.setName(layout_name)
             layout_manager.addLayout(layout)
 
-            # -----------------------------
-            # Load raster
-            # -----------------------------
             if os.path.exists(raster_path):
                 raster_layer = self.get_or_load_raster_layer(raster_path)
                 if raster_layer:
@@ -283,68 +306,74 @@ class GeophysicsMapping:
                         raster_extent = raster_layer.extent()
                         if not raster_extent.isEmpty():
                             map_item.zoomToExtent(raster_extent)
-                            rounded_scale = round(map_item.scale(), -3)
-                            map_item.setScale(rounded_scale)
+                            map_item.setScale(round(map_item.scale(), -3))
                             map_item.refresh()
 
                     # -----------------------------
-                    # Derive title/description from filename + lookup
+                    # Extract Title and Lookup
                     # -----------------------------
-                    basename = os.path.basename(raster_path)
-                    filename = os.path.splitext(basename)[0]
+                    basename_no_ext = os.path.splitext(os.path.basename(raster_path))[0]
 
-                    parts = filename.split()
-                    if len(parts) > 2 and parts[0].upper() in ["WGS84", "NAD83"]:
-                        parts = parts[1:]
+                    # Remove WGS84 / NAD83 prefix
+                    match_prefix = re.match(
+                        r"^(WGS84|NAD83)\s+", basename_no_ext, re.IGNORECASE
+                    )
+                    start_idx = match_prefix.end() if match_prefix else 0
+                    remaining_name = basename_no_ext[start_idx:].strip()
 
-                    # Match longest key first
+                    # Exact match in dictionary (longest key first)
                     matched_key = None
                     for key in sorted(
                         self.DESCRIPTION_LOOKUP.keys(), key=len, reverse=True
                     ):
-                        if key in filename:
+                        if remaining_name.endswith(key):
                             matched_key = key
                             break
 
                     if matched_key:
-                        title_text = " ".join(
-                            parts[: -len(matched_key.split())]
-                        ).strip()
-                        desc_text, units_text = self.DESCRIPTION_LOOKUP[matched_key]
+                        title_text = remaining_name[: -len(matched_key)].strip()
+                        map_desc, units_text, legend_file = self.DESCRIPTION_LOOKUP[
+                            matched_key
+                        ]
                     else:
-                        # Fallback
-                        title_text = (
-                            " ".join(parts[:-1]) if len(parts) > 1 else filename
-                        )
-                        desc_text = parts[-1] if parts else ""
+                        title_text = remaining_name
+                        map_desc = ""
                         units_text = ""
+                        legend_file = ""
 
+                    # -----------------------------
+                    # Update layout items
+                    # -----------------------------
                     title_item = layout.itemById("Title")
                     if title_item and isinstance(title_item, QgsLayoutItemLabel):
                         title_item.setText(title_text)
 
                     desc_item = layout.itemById("Map Description")
                     if desc_item and isinstance(desc_item, QgsLayoutItemLabel):
-                        desc_item.setText(desc_text)
+                        desc_item.setText(map_desc)
 
-                    units_item = layout.itemById("Legend Units")
-                    if units_item and isinstance(units_item, QgsLayoutItemLabel):
-                        units_item.setText(units_text)
+                    legend_unit_item = layout.itemById("Legend Unit")
+                    if legend_unit_item and isinstance(
+                        legend_unit_item, QgsLayoutItemLabel
+                    ):
+                        legend_unit_item.setText(units_text)
 
-            # -----------------------------
-            # Load legend image
-            # -----------------------------
-            if os.path.exists(legend_path):
-                legend_item = layout.itemById("Legend (Oasis)")
-                if isinstance(legend_item, QgsLayoutItemPicture):
-                    legend_item.setPicturePath(legend_path)
-                    legend_item.refresh()
+                    # -----------------------------
+                    # Load legend image
+                    # -----------------------------
+                    legend_path = self.dlg.LegendQgsFileWidget.filePath()
+                    if legend_file:
+                        candidate_path = os.path.join(self.plugin_dir, legend_file)
+                        if os.path.exists(candidate_path):
+                            legend_path = candidate_path
 
-            # -----------------------------
-            # Open the layout in designer
-            # -----------------------------
+                    if os.path.exists(legend_path):
+                        legend_pic_item = layout.itemById("Legend (Oasis)")
+                        if isinstance(legend_pic_item, QgsLayoutItemPicture):
+                            legend_pic_item.setPicturePath(legend_path)
+                            legend_pic_item.refresh()
+
             self.iface.openLayoutDesigner(layout)
-
             print(f"Layout '{layout_name}' created and opened successfully.")
 
         except Exception as e:

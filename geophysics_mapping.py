@@ -28,15 +28,14 @@ from qgis.gui import QgsFileWidget
 from qgis.PyQt import uic
 from qgis.core import (
     QgsProject,
-    QgsPrintLayout,
-    QgsReadWriteContext,
     QgsRasterLayer,
-    QgsLayoutItemMap,
-    QgsLayoutItemPicture,
-    QgsLayoutItemLabel,
     QgsMapLayerType,
+    QgsLayoutItemMap,
+    QgsLayoutItemLabel,
+    QgsLayoutItemPicture,
 )
-from qgis.PyQt.QtXml import QDomDocument
+
+from .layout_editor import LayoutEditor
 
 import os
 import re
@@ -46,6 +45,8 @@ class GeophysicsMapping:
     def __init__(self, iface):
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
+        # Initialize layout editor with default client location
+        self.layout_editor = LayoutEditor()
         locale = QSettings().value("locale/userLocale")[0:2]
         locale_path = os.path.join(
             self.plugin_dir, "i18n", f"GeophysicsMapping_{locale}.qm"
@@ -59,118 +60,6 @@ class GeophysicsMapping:
         self.actions = []
         self.menu = self.tr("&Geophysics Mapping")
         self.first_start = None
-
-        # -----------------------------
-        # Internal DESCRIPTION_LOOKUP dictionary
-        # Format: "FILENAME": ("Map Description", "Units", "Legend PNG")
-        # -----------------------------
-        self.DESCRIPTION_LOOKUP = {
-            "TotalFieldMagnetics": (
-                "Total Magnetic Intensity",
-                "Total Magnetic Intensity (nT)",
-                "Total Field Magnetics.png",
-            ),
-            "TotalFieldMagneticsRTP": (
-                "TMI Reduced to Pole",
-                "Total Magnetic Intensity Reduced to Pole (nT)",
-                "Total Field Magnetics RTP.png",
-            ),
-            "TotalFieldMagneticsRTPVD1": (
-                "First Vertical Derivative",
-                "First Vertical Derivative: TMI Reduced to Pole (nT/m)",
-                "Total Field Magnetics RTP VD1.png",
-            ),
-            "TotalFieldMagneticsRTPTHDR": (
-                "Total Horizontal Gradient",
-                "Total Horizontal Gradient: TMI Reduced to Pole (nT/m)",
-                "Total Field Magnetics RTP THDR.png",
-            ),
-            "TotalFieldMagneticsRTPTDR": (
-                "Tilt Derivative",
-                "Tilt Derivative: TMI Reduced to Pole (rad)",
-                "Total Field Magnetics RTP TDR.png",
-            ),
-            "TotalFieldMagneticsRTPRMI": (
-                "Residual Magnetic Intensity",
-                "IGRF corrected TMI (nT)",
-                "Total Field Magnetics RTP RMI.png",
-            ),
-            "TotalFieldMagneticsRTPResidual1500m": (
-                "Residual Filtered - 1500 m",
-                "Residual Filtered: TMI Reduced to Pole (nT)",
-                "Total Field Magnetics RTP Residual 1500 m.png",
-            ),
-            "TotalFieldMagneticsRTPRegional1500m": (
-                "Regional Filtered - 1500 m",
-                "Regional Filtered: TMI Reduced to Pole (nT)",
-                "Total Field Magnetics RTP Regional 1500 m.png",
-            ),
-            "TotalFieldMagneticsRTPAS": (
-                "Analytical Signal",
-                "Analytical Signal (nT/m)",
-                "Total Field Magnetics RTP AS.png",
-            ),
-            "dBdtZch10": (
-                "dB/dt z component 0.014 ms after turnoff",
-                "dB/dt z component: channel 10 (pV/(Am^4))",
-                "dBdt Z ch10.png",
-            ),
-            "dBdtZch15": (
-                "dB/dt z component 0.045 ms after turnoff",
-                "dB/dt z component: channel 15 (pV/(Am^4))",
-                "dBdt Z ch15.png",
-            ),
-            "dBdtZch20": (
-                "dB/dt z component 0.12 ms after turnoff",
-                "dB/dt z component: channel 20 (pV/(Am^4))",
-                "dBdt Z ch20.png",
-            ),
-            "dBdtZch25": (
-                "dB/dt z component 0.26 ms after turnoff",
-                "dB/dt z component: channel 25 (pV/(Am^4))",
-                "dBdt Z ch25.png",
-            ),
-            "dBdtZch30": (
-                "dB/dt z component 0.56 ms after turnoff",
-                "dB/dt z component: channel 30 (pV/(Am^4))",
-                "dBdt Z ch30.png",
-            ),
-            "dBdtZch35": (
-                "dB/dt z component 1.16 ms after turnoff",
-                "dB/dt z component: channel 35 (pV/(Am^4))",
-                "dBdt Z ch35.png",
-            ),
-            "dBdtZch40": (
-                "dB/dt z component 2.36 ms after turnoff",
-                "dB/dt z component: channel 40 (pV/(Am^4))",
-                "dBdt Z ch40.png",
-            ),
-            "dBdtZch45": (
-                "dB/dt z component 4.74 ms after turnoff",
-                "dB/dt z component: channel 45 (pV/(Am^4))",
-                "dBdt Z ch45.png",
-            ),
-            "DigitalTerrainModel": (
-                "Digital Terrain Model",
-                "Digital Terrain Model (m)",
-                "Digital Terrain Model.png",
-            ),
-            "ConductivityDepthSlice25m": (
-                "Conductivity Depth Slice - 25m",
-                "Conductivity (S/m)",
-                "Conductivity 25m.png",
-            ),
-            "SusceptibilityDepthSlice25m": (
-                "Susceptibility Depth Slice - 25m",
-                "Relative Susceptibility (SI)",
-                "Susceptibility 25m.png",
-            ),
-            "AltitudeSensor": (
-                "Altitude Sensor",
-                "Altitude Sensor (m)",
-                "Altitude Sensor.png",
-            ),
-        }
 
     def tr(self, message):
         return QCoreApplication.translate("GeophysicsMapping", message)
@@ -228,9 +117,10 @@ class GeophysicsMapping:
 
             self.dlg.TemplatemQgsFileWidget.setDialogTitle("Select Geophysics Template")
             self.dlg.TemplatemQgsFileWidget.setFilter("QGIS Layout Template (*.qpt)")
-            default_template = os.path.join(
-                self.plugin_dir, "Geophysics_SurveyMaps.qpt"
-            )
+
+            # USER NEED TO CHANGE THE DEFAULT_TEMPLATE PATH TO THEIR OWN TEMPLATE FILE
+            # default_template = r"C:\Users\igord\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\geophysics_mapping\Geophysics_SurveyMaps.qpt"
+            default_template = r"C:\Users\igord\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\geophysics_mapping\templates\Geophysics_SurveyMaps.qpt"
             self.dlg.TemplatemQgsFileWidget.setFilePath(default_template)
 
             self.dlg.GeotiffQgsFileWidget.setDialogTitle("Select GeoTIFF Raster File")
@@ -273,105 +163,62 @@ class GeophysicsMapping:
             if user_text:
                 layout_name = re.sub(r'[\\/:*?"<>|]', "", user_text)
 
-            if not os.path.exists(template_path):
-                raise FileNotFoundError("Template file not found.")
-
-            with open(template_path, "r", encoding="utf-8") as file:
-                template_content = file.read()
-            doc = QDomDocument()
-            doc.setContent(template_content)
-
-            project = QgsProject.instance()
-            layout_manager = project.layoutManager()
-
-            existing_layout = layout_manager.layoutByName(layout_name)
-            if existing_layout:
-                layout_manager.removeLayout(existing_layout)
-
-            layout = QgsPrintLayout(project)
-            layout.initializeDefaults()
-            context = QgsReadWriteContext()
-            if not layout.loadFromTemplate(doc, context):
-                raise RuntimeError("Failed to load layout from template.")
-
-            layout.setName(layout_name)
-            layout_manager.addLayout(layout)
+            # Create layout using LayoutEditor
+            layout = self.layout_editor.create_layout(template_path, layout_name)
+            if not layout:
+                return
 
             if os.path.exists(raster_path):
                 raster_layer = self.get_or_load_raster_layer(raster_path)
                 if raster_layer:
-                    map_item = layout.itemById("SatMap")
-                    if isinstance(map_item, QgsLayoutItemMap):
-                        map_item.setLayers([raster_layer])
-                        raster_extent = raster_layer.extent()
-                        if not raster_extent.isEmpty():
-                            map_item.zoomToExtent(raster_extent)
-                            map_item.setScale(round(map_item.scale(), -3))
-                            map_item.refresh()
+                    # Let layout_editor handle map updates
+                    self.layout_editor.update_map_item(layout, raster_layer)
 
-                    # -----------------------------
-                    # Extract Title and Lookup
-                    # -----------------------------
-                    basename_no_ext = os.path.splitext(os.path.basename(raster_path))[0]
-
-                    # Remove WGS84 / NAD83 prefix
-                    match_prefix = re.match(
-                        r"^(WGS84|NAD83)\s+", basename_no_ext, re.IGNORECASE
+                    # Get map information from layout editor
+                    title_text, map_desc, units_text, legend_file = (
+                        self.layout_editor.get_map_info(raster_path)
                     )
-                    start_idx = match_prefix.end() if match_prefix else 0
-                    remaining_name = basename_no_ext[start_idx:].strip()
 
-                    # Exact match in dictionary (longest key first)
-                    matched_key = None
-                    for key in sorted(
-                        self.DESCRIPTION_LOOKUP.keys(), key=len, reverse=True
-                    ):
-                        if remaining_name.endswith(key):
-                            matched_key = key
-                            break
+                    # Update layout items using layout editor
+                    self.layout_editor.update_text_item(layout, "Title", title_text)
+                    self.layout_editor.update_text_item(
+                        layout, "Client-Location", self.layout_editor.client_location
+                    )
+                    self.layout_editor.update_text_item(
+                        layout, "Map Description", map_desc
+                    )
+                    self.layout_editor.update_text_item(
+                        layout, "Legend Unit", units_text
+                    )
 
-                    if matched_key:
-                        title_text = remaining_name[: -len(matched_key)].strip()
-                        map_desc, units_text, legend_file = self.DESCRIPTION_LOOKUP[
-                            matched_key
-                        ]
-                    else:
-                        title_text = remaining_name
-                        map_desc = ""
-                        units_text = ""
-                        legend_file = ""
-
-                    # -----------------------------
-                    # Update layout items
-                    # -----------------------------
-                    title_item = layout.itemById("Title")
-                    if title_item and isinstance(title_item, QgsLayoutItemLabel):
-                        title_item.setText(title_text)
-
-                    desc_item = layout.itemById("Map Description")
-                    if desc_item and isinstance(desc_item, QgsLayoutItemLabel):
-                        desc_item.setText(map_desc)
-
-                    legend_unit_item = layout.itemById("Legend Unit")
-                    if legend_unit_item and isinstance(
-                        legend_unit_item, QgsLayoutItemLabel
-                    ):
-                        legend_unit_item.setText(units_text)
-
-                    # -----------------------------
-                    # Load legend image
-                    # -----------------------------
-                    legend_path = self.dlg.LegendQgsFileWidget.filePath()
+                    # Try to find legend in LEGENDS subfolder
+                    legend_path = None
                     if legend_file:
-                        candidate_path = os.path.join(self.plugin_dir, legend_file)
-                        if os.path.exists(candidate_path):
-                            legend_path = candidate_path
+                        raster_dir = os.path.dirname(raster_path)
+                        legends_folder = os.path.join(raster_dir, "LEGENDS")
+                        if os.path.exists(legends_folder):
+                            candidate_path = os.path.join(legends_folder, legend_file)
+                            if os.path.exists(candidate_path):
+                                legend_path = candidate_path
+                            else:
+                                print(
+                                    f"Legend file {legend_file} not found in LEGENDS folder"
+                                )
+                        else:
+                            print("LEGENDS folder not found in raster directory")
 
+                    # Fallback to manually selected legend path if automatic lookup fails
+                    if not legend_path or not os.path.exists(legend_path):
+                        legend_path = self.dlg.LegendQgsFileWidget.filePath()
+
+                    # Update legend picture if a valid path is found
                     if os.path.exists(legend_path):
-                        legend_pic_item = layout.itemById("Legend (Oasis)")
-                        if isinstance(legend_pic_item, QgsLayoutItemPicture):
-                            legend_pic_item.setPicturePath(legend_path)
-                            legend_pic_item.refresh()
+                        if self.layout_editor.update_picture_item(
+                            layout, "Legend (Oasis)", legend_path
+                        ):
+                            print(f"Legend loaded from: {legend_path}")
+                    else:
+                        print("No valid legend file found")
 
             self.iface.openLayoutDesigner(layout)
             print(f"Layout '{layout_name}' created and opened successfully.")

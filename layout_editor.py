@@ -1,7 +1,6 @@
 from qgis.core import (
     QgsPrintLayout,
     QgsLayoutItemMap,
-    QgsLayoutItemScaleBar,
     QgsLayoutItemLabel,
     QgsLayoutItemPicture,
     QgsProject,
@@ -16,6 +15,7 @@ import os
 DEFAULT_CLIENT_LOCATION = "Axiom Exploration\nRio de Janeiro, Brazil"
 
 # Description lookup dictionary for map types
+
 DESCRIPTION_LOOKUP = {
     "SensorAltitude": (
         "Sensor Altitude",
@@ -136,225 +136,10 @@ DESCRIPTION_LOOKUP = {
 import os
 
 
-class LayoutStateManager:
-    """Manages layout state and persistence across multiple layout creations"""
-
-    def __init__(self):
-        self.initialized = False
-        # Main map settings (SatMap)
-        self.map_settings = {"scale": None, "extent": None, "rotation": None}
-        # Inset map settings
-        self.inset_map_settings = {"scale": None, "extent": None, "rotation": None}
-        # Main scalebar settings
-        self.scalebar_settings = {
-            "style": None,
-            "units": None,
-            "segments": None,
-            "height": None,
-            "unit_label": None,
-            "position": None,
-            "alignment": None,
-            "box_content_space": None,
-            "units_per_segment": None,
-            "fixed_width": None,
-            "fixed_bar_width": None,
-            "num_map_units_per_bar_unit": None,
-        }
-        # Inset scalebar settings
-        self.inset_scalebar_settings = {
-            "style": None,
-            "units": None,
-            "segments": None,
-            "height": None,
-            "unit_label": None,
-            "position": None,
-            "alignment": None,
-            "box_content_space": None,
-            "units_per_segment": None,
-            "fixed_width": None,
-            "fixed_bar_width": None,
-            "num_map_units_per_bar_unit": None,
-        }
-
-    def capture_layout_state(self, layout):
-        """Captures the current state of important layout items"""
-        try:
-            # Capture main map settings
-            map_item = layout.itemById("SatMap")
-            if isinstance(map_item, QgsLayoutItemMap):
-                self.map_settings.update(
-                    {
-                        "scale": map_item.scale(),
-                        "extent": map_item.extent(),
-                        "rotation": map_item.mapRotation(),
-                    }
-                )
-                print("Captured SatMap settings")
-
-            # Capture inset map settings
-            inset_map = layout.itemById("InsetMap")
-            if isinstance(inset_map, QgsLayoutItemMap):
-                self.inset_map_settings.update(
-                    {
-                        "scale": inset_map.scale(),
-                        "extent": inset_map.extent(),
-                        "rotation": inset_map.mapRotation(),
-                    }
-                )
-                print("Captured InsetMap settings")
-
-            # Capture main scalebar settings
-            scalebar = layout.itemById("Scalebar")
-            if isinstance(scalebar, QgsLayoutItemScaleBar):
-                self.scalebar_settings.update(
-                    {
-                        "style": scalebar.style(),
-                        "units": scalebar.units(),
-                        "segments": scalebar.numberOfSegments(),
-                        "height": scalebar.height(),
-                        "unit_label": scalebar.unitLabel(),
-                        "position": scalebar.positionWithUnits(),
-                        "alignment": scalebar.alignment(),
-                        "box_content_space": scalebar.boxContentSpace(),
-                        "units_per_segment": scalebar.numUnitsPerSegment(),
-                        "fixed_width": scalebar.fixedWidth(),
-                        "fixed_bar_width": scalebar.fixedBarWidth(),
-                        "num_map_units_per_bar_unit": scalebar.numMapUnitsPerScaleBarUnit(),
-                    }
-                )
-                print("Captured Scalebar settings")
-
-            # Capture inset scalebar settings
-            inset_scalebar = layout.itemById("InsetScaleBar")
-            if isinstance(inset_scalebar, QgsLayoutItemScaleBar):
-                self.inset_scalebar_settings.update(
-                    {
-                        "style": inset_scalebar.style(),
-                        "units": inset_scalebar.units(),
-                        "segments": inset_scalebar.numberOfSegments(),
-                        "height": inset_scalebar.height(),
-                        "unit_label": inset_scalebar.unitLabel(),
-                        "position": inset_scalebar.positionWithUnits(),
-                        "alignment": inset_scalebar.alignment(),
-                        "box_content_space": inset_scalebar.boxContentSpace(),
-                        "units_per_segment": inset_scalebar.numUnitsPerSegment(),
-                        "fixed_width": inset_scalebar.fixedWidth(),
-                        "fixed_bar_width": inset_scalebar.fixedBarWidth(),
-                        "num_map_units_per_bar_unit": inset_scalebar.numMapUnitsPerScaleBarUnit(),
-                    }
-                )
-                print("Captured InsetScaleBar settings")
-
-            self.initialized = True
-            return True
-
-        except Exception as e:
-            print(f"Error capturing layout state: {str(e)}")
-            return False
-
-    def apply_layout_state(self, layout):
-        """Applies the saved state to a new layout"""
-        try:
-            if not self.initialized:
-                return False
-
-            # Apply main map settings
-            map_item = layout.itemById("SatMap")
-            if isinstance(map_item, QgsLayoutItemMap):
-                if self.map_settings["extent"]:
-                    map_item.setExtent(self.map_settings["extent"])
-                if self.map_settings["scale"]:
-                    map_item.setScale(self.map_settings["scale"])
-                if self.map_settings["rotation"] is not None:
-                    map_item.setMapRotation(self.map_settings["rotation"])
-                map_item.refresh()
-                print("Applied SatMap settings")
-
-            # Apply inset map settings
-            inset_map = layout.itemById("InsetMap")
-            if isinstance(inset_map, QgsLayoutItemMap):
-                if self.inset_map_settings["extent"]:
-                    inset_map.setExtent(self.inset_map_settings["extent"])
-                if self.inset_map_settings["scale"]:
-                    inset_map.setScale(self.inset_map_settings["scale"])
-                if self.inset_map_settings["rotation"] is not None:
-                    inset_map.setMapRotation(self.inset_map_settings["rotation"])
-                inset_map.refresh()
-                print("Applied InsetMap settings")
-
-            # Apply main scalebar settings
-            scalebar = layout.itemById("Scalebar")
-            if isinstance(scalebar, QgsLayoutItemScaleBar) and all(
-                v is not None for v in self.scalebar_settings.values()
-            ):
-                scalebar.setStyle(self.scalebar_settings["style"])
-                scalebar.setUnits(self.scalebar_settings["units"])
-                scalebar.setNumberOfSegments(self.scalebar_settings["segments"])
-                scalebar.setHeight(self.scalebar_settings["height"])
-                scalebar.setUnitLabel(self.scalebar_settings["unit_label"])
-                scalebar.setPositionWithUnits(self.scalebar_settings["position"])
-                scalebar.setAlignment(self.scalebar_settings["alignment"])
-                scalebar.setBoxContentSpace(self.scalebar_settings["box_content_space"])
-                scalebar.setNumUnitsPerSegment(
-                    self.scalebar_settings["units_per_segment"]
-                )
-                scalebar.setNumMapUnitsPerScaleBarUnit(
-                    self.scalebar_settings["num_map_units_per_bar_unit"]
-                )
-                if self.scalebar_settings["fixed_width"]:
-                    scalebar.setFixedWidth(self.scalebar_settings["fixed_width"])
-                if self.scalebar_settings["fixed_bar_width"]:
-                    scalebar.setFixedBarWidth(self.scalebar_settings["fixed_bar_width"])
-                scalebar.refresh()
-                print("Applied Scalebar settings")
-
-            # Apply inset scalebar settings
-            inset_scalebar = layout.itemById("InsetScaleBar")
-            if isinstance(inset_scalebar, QgsLayoutItemScaleBar) and all(
-                v is not None for v in self.inset_scalebar_settings.values()
-            ):
-                inset_scalebar.setStyle(self.inset_scalebar_settings["style"])
-                inset_scalebar.setUnits(self.inset_scalebar_settings["units"])
-                inset_scalebar.setNumberOfSegments(
-                    self.inset_scalebar_settings["segments"]
-                )
-                inset_scalebar.setHeight(self.inset_scalebar_settings["height"])
-                inset_scalebar.setUnitLabel(self.inset_scalebar_settings["unit_label"])
-                inset_scalebar.setPositionWithUnits(
-                    self.inset_scalebar_settings["position"]
-                )
-                inset_scalebar.setAlignment(self.inset_scalebar_settings["alignment"])
-                inset_scalebar.setBoxContentSpace(
-                    self.inset_scalebar_settings["box_content_space"]
-                )
-                inset_scalebar.setNumUnitsPerSegment(
-                    self.inset_scalebar_settings["units_per_segment"]
-                )
-                inset_scalebar.setNumMapUnitsPerScaleBarUnit(
-                    self.inset_scalebar_settings["num_map_units_per_bar_unit"]
-                )
-                if self.inset_scalebar_settings["fixed_width"]:
-                    inset_scalebar.setFixedWidth(
-                        self.inset_scalebar_settings["fixed_width"]
-                    )
-                if self.inset_scalebar_settings["fixed_bar_width"]:
-                    inset_scalebar.setFixedBarWidth(
-                        self.inset_scalebar_settings["fixed_bar_width"]
-                    )
-                inset_scalebar.refresh()
-                print("Applied InsetScaleBar settings")
-
-            return True
-        except Exception as e:
-            print(f"Error applying layout state: {str(e)}")
-            return False
-
-
 class LayoutEditor:
     """Handles layout creation and manipulation"""
 
     def __init__(self, client_location=DEFAULT_CLIENT_LOCATION):
-        self.state_manager = LayoutStateManager()
         self.client_location = client_location
 
     def set_client_location(self, client_location):
@@ -364,7 +149,6 @@ class LayoutEditor:
     def get_map_info(self, filename):
         """Extract map information from filename
         Returns: (title_text, map_desc, units_text, legend_file)"""
-        # Remove file extension
         basename_no_ext = os.path.splitext(os.path.basename(filename))[0]
 
         # Remove WGS84 / NAD83 prefix
@@ -372,7 +156,6 @@ class LayoutEditor:
         start_idx = match_prefix.end() if match_prefix else 0
         remaining_name = basename_no_ext[start_idx:].strip()
 
-        # Find matching key in lookup dictionary
         matched_key = None
         for key in sorted(DESCRIPTION_LOOKUP.keys(), key=len, reverse=True):
             if remaining_name.endswith(key):
@@ -384,7 +167,7 @@ class LayoutEditor:
             map_desc, units_text, legend_file = DESCRIPTION_LOOKUP[matched_key]
 
             # Add newline for dBdtZch descriptions
-            if matched_key and matched_key.startswith("dBdtZch"):
+            if matched_key.startswith("dBdtZch"):
                 parts = map_desc.split(" after ")
                 if len(parts) == 2:
                     map_desc = parts[0] + "\n" + "after " + parts[1]
@@ -399,22 +182,18 @@ class LayoutEditor:
             if not os.path.exists(template_path):
                 raise FileNotFoundError("Template file not found")
 
-            # Load template
             with open(template_path, "r", encoding="utf-8") as file:
                 template_content = file.read()
             doc = QDomDocument()
             doc.setContent(template_content)
 
-            # Set up layout
             project = QgsProject.instance()
             layout_manager = project.layoutManager()
 
-            # Remove existing layout if it exists
             existing_layout = layout_manager.layoutByName(layout_name)
             if existing_layout:
                 layout_manager.removeLayout(existing_layout)
 
-            # Create new layout
             layout = QgsPrintLayout(project)
             layout.initializeDefaults()
             context = QgsReadWriteContext()
@@ -425,14 +204,29 @@ class LayoutEditor:
             layout.setName(layout_name)
             layout_manager.addLayout(layout)
 
-            # If this is a subsequent layout, apply saved state
-            if self.state_manager.initialized:
-                self.state_manager.apply_layout_state(layout)
-
             return layout
 
         except Exception as e:
             print(f"Error creating layout: {str(e)}")
+            return None
+
+    def duplicate_layout(self, source_layout, new_name):
+        """Duplicates an existing layout (all variables preserved)"""
+        try:
+            project = QgsProject.instance()
+            layout_manager = project.layoutManager()
+
+            existing_layout = layout_manager.layoutByName(new_name)
+            if existing_layout:
+                layout_manager.removeLayout(existing_layout)
+
+            new_layout = source_layout.clone()
+            new_layout.setName(new_name)
+            layout_manager.addLayout(new_layout)
+            return new_layout
+
+        except Exception as e:
+            print(f"Error duplicating layout: {str(e)}")
             return None
 
     def update_map_item(self, layout, raster_layer):
@@ -443,18 +237,7 @@ class LayoutEditor:
                 map_item.setLayers([raster_layer])
                 extent = raster_layer.extent()
                 if not extent.isEmpty():
-                    # For first map, zoom to extent and capture state
-                    if not self.state_manager.initialized:
-                        map_item.zoomToExtent(extent)
-                        map_item.setScale(round(map_item.scale(), -3))
-                        # Capture initial state after first map is set up
-                        self.state_manager.capture_layout_state(layout)
-                    else:
-                        # For subsequent maps, preserve scale but center on new extent
-                        current_scale = map_item.scale()
-                        map_item.zoomToExtent(extent)
-                        map_item.setScale(current_scale)
-
+                    map_item.zoomToExtent(extent)
                     map_item.refresh()
                 return True
         except Exception as e:

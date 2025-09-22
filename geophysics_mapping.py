@@ -30,9 +30,6 @@ from qgis.core import (
     QgsProject,
     QgsRasterLayer,
     QgsMapLayerType,
-    QgsLayoutItemMap,
-    QgsLayoutItemLabel,
-    QgsLayoutItemPicture,
 )
 
 from .layout_editor import LayoutEditor
@@ -45,7 +42,6 @@ class GeophysicsMapping:
     def __init__(self, iface):
         self.iface = iface
         self.plugin_dir = os.path.dirname(__file__)
-        # Initialize layout editor with default client location
         self.layout_editor = LayoutEditor()
         locale = QSettings().value("locale/userLocale")[0:2]
         locale_path = os.path.join(
@@ -60,6 +56,7 @@ class GeophysicsMapping:
         self.actions = []
         self.menu = self.tr("&Geophysics Mapping")
         self.first_start = None
+        self.current_layout = None  # will store the most recent layout
 
     def tr(self, message):
         return QCoreApplication.translate("GeophysicsMapping", message)
@@ -118,9 +115,9 @@ class GeophysicsMapping:
             self.dlg.TemplatemQgsFileWidget.setDialogTitle("Select Geophysics Template")
             self.dlg.TemplatemQgsFileWidget.setFilter("QGIS Layout Template (*.qpt)")
 
-            # USER NEED TO CHANGE THE DEFAULT_TEMPLATE PATH TO THEIR OWN TEMPLATE FILE
-            # default_template = r"C:\Users\igord\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\geophysics_mapping\Geophysics_SurveyMaps.qpt"
-            default_template = r"C:\Users\igord\AppData\Roaming\QGIS\QGIS3\profiles\default\python\plugins\geophysics_mapping\templates\Geophysics_SurveyMaps.qpt"
+            default_template = os.path.join(
+                self.plugin_dir, "templates", "Geophysics_SurveyMaps.qpt"
+            )
             self.dlg.TemplatemQgsFileWidget.setFilePath(default_template)
 
             self.dlg.GeotiffQgsFileWidget.setDialogTitle("Select GeoTIFF Raster File")
@@ -163,23 +160,30 @@ class GeophysicsMapping:
             if user_text:
                 layout_name = re.sub(r'[\\/:*?"<>|]', "", user_text)
 
-            # Create layout using LayoutEditor
-            layout = self.layout_editor.create_layout(template_path, layout_name)
+            # Create or duplicate layout
+            if self.current_layout is None:
+                # First layout - create from template
+                layout = self.layout_editor.create_layout(template_path, layout_name)
+            else:
+                # Subsequent layouts - duplicate the last one created
+                layout = self.layout_editor.duplicate_layout(
+                    self.current_layout, layout_name
+                )
+
             if not layout:
                 return
 
+            # Process raster and update layout
             if os.path.exists(raster_path):
                 raster_layer = self.get_or_load_raster_layer(raster_path)
                 if raster_layer:
-                    # Let layout_editor handle map updates
                     self.layout_editor.update_map_item(layout, raster_layer)
 
-                    # Get map information from layout editor
+                    # Get map information and update layout items
                     title_text, map_desc, units_text, legend_file = (
                         self.layout_editor.get_map_info(raster_path)
                     )
 
-                    # Update layout items using layout editor
                     self.layout_editor.update_text_item(layout, "Title", title_text)
                     self.layout_editor.update_text_item(
                         layout, "Client-Location", self.layout_editor.client_location
@@ -191,34 +195,26 @@ class GeophysicsMapping:
                         layout, "Legend Unit", units_text
                     )
 
-                    # Try to find legend in LEGENDS subfolder
+                    # Handle legend file
                     legend_path = None
                     if legend_file:
                         raster_dir = os.path.dirname(raster_path)
                         legends_folder = os.path.join(raster_dir, "LEGENDS")
-                        if os.path.exists(legends_folder):
-                            candidate_path = os.path.join(legends_folder, legend_file)
-                            if os.path.exists(candidate_path):
-                                legend_path = candidate_path
-                            else:
-                                print(
-                                    f"Legend file {legend_file} not found in LEGENDS folder"
-                                )
-                        else:
-                            print("LEGENDS folder not found in raster directory")
+                        candidate_path = os.path.join(legends_folder, legend_file)
+                        if os.path.exists(candidate_path):
+                            legend_path = candidate_path
 
-                    # Fallback to manually selected legend path if automatic lookup fails
+                    # Fallback to manually selected legend path
                     if not legend_path or not os.path.exists(legend_path):
                         legend_path = self.dlg.LegendQgsFileWidget.filePath()
 
-                    # Update legend picture if a valid path is found
                     if os.path.exists(legend_path):
-                        if self.layout_editor.update_picture_item(
+                        self.layout_editor.update_picture_item(
                             layout, "Legend (Oasis)", legend_path
-                        ):
-                            print(f"Legend loaded from: {legend_path}")
-                    else:
-                        print("No valid legend file found")
+                        )
+
+            # Store this layout as the most recent one
+            self.current_layout = layout
 
             self.iface.openLayoutDesigner(layout)
             print(f"Layout '{layout_name}' created and opened successfully.")

@@ -17,7 +17,7 @@ DEFAULT_CLIENT_LOCATION = "Axiom Exploration\nRio de Janeiro, Brazil"
 
 # Description lookup dictionary for map types
 DESCRIPTION_LOOKUP = {
-    "Sensor Altitude": (
+    "SensorAltitude": (
         "Sensor Altitude",
         "Sensor Altitude (m)",
         "SensorAltitude.png",
@@ -30,7 +30,7 @@ DESCRIPTION_LOOKUP = {
     "dBdtZch10": (
         "dB/dt z component 0.014 ms after turnoff",
         "dB/dt z component: channel 10 (pV/(Am^4))",
-        "dBdt Z ch10.png",
+        "dBdtZch10.png",
     ),
     "dBdtZch15": (
         "dB/dt z component 0.045 ms after turnoff",

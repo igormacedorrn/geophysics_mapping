@@ -92,7 +92,7 @@ class GeophysicsMapping:
         return action
 
     def initGui(self):
-        icon_path = r"/plugins/geophysics_mapping/icon_64.png"
+        icon_path = r"/plugins/geophysics_mapping/icon.png"
         self.add_action(
             icon_path,
             text=self.tr("Geophysics Mapping"),
@@ -177,6 +177,13 @@ class GeophysicsMapping:
             if os.path.exists(raster_path):
                 raster_layer = self.get_or_load_raster_layer(raster_path)
                 if raster_layer:
+                    # 🔹 Apply white background transparency
+                    self.layout_editor.apply_transparency_style(raster_layer)
+
+                    # 🔹 Hide other layers except exceptions + this raster
+                    self.layout_editor.hide_other_layers(raster_layer)
+
+                    # Update layout with raster
                     self.layout_editor.update_map_item(layout, raster_layer)
 
                     # Get map information and update layout items

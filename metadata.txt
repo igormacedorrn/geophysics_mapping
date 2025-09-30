@@ -6,11 +6,11 @@
 name=Geophysics Mapping
 qgisMinimumVersion=3.0
 description=This plug-in automates the map making workflow
-version=0.1
+version=2.0.1
 author=Igor Macedo
 email=imacedo@axiomex.com
 
-about=This plug-in will automate fields of the map template based on the map requirements.
+about=This plug-in will automate fields of the map template based on the map requirements. Prepared for the Geophysics Department.
 
 tracker=http://bugs
 repository=http://repo

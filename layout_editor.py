@@ -5,6 +5,7 @@ from qgis.core import (
     QgsLayoutItemPicture,
     QgsProject,
     QgsReadWriteContext,
+    QgsRasterLayer,
 )
 from qgis.PyQt.QtXml import QDomDocument
 import re
@@ -14,126 +15,116 @@ import os
 # Default client information
 DEFAULT_CLIENT_LOCATION = "Axiom Exploration\nRio de Janeiro, Brazil"
 
-# Description lookup dictionary for map types
+# Layers that should never be hidden
+EXCEPTION_LAYERS = {
+    "Esri World Imagery (Clarity) Beta",
+    "Google Satellite Hybrid",
+    "property AOI",
+}
 
+# Description lookup dictionary for map types
 DESCRIPTION_LOOKUP = {
-    "SensorAltitude": (
+    "AGL": (
         "Sensor Altitude",
         "Sensor Altitude (m)",
-        "SensorAltitude.png",
-    ),
-    "ConductivityDepthSlice25m": (
-        "Conductivity Depth Slice - 25m",
-        "Conductivity (S/m)",
-        "Conductivity 25m.png",
+        "AGL.png",
     ),
     "dBdtZch10": (
         "dB/dt z component 0.014 ms after turnoff",
         "dB/dt z component: channel 10 (pV/(Am^4))",
         "dBdtZch10.png",
     ),
-    "dBdtZch15": (
-        "dB/dt z component 0.045 ms after turnoff",
-        "dB/dt z component: channel 15 (pV/(Am^4))",
-        "dBdtZch15.png",
-    ),
-    "dBdtZch20": (
-        "dB/dt z component 0.12 ms after turnoff",
-        "dB/dt z component: channel 20 (pV/(Am^4))",
-        "dBdtZch20.png",
-    ),
-    "dBdtZch25": (
-        "dB/dt z component 0.26 ms after turnoff",
-        "dB/dt z component: channel 25 (pV/(Am^4))",
-        "dBdtZch25.png",
-    ),
-    "dBdtZch30": (
-        "dB/dt z component 0.56 ms after turnoff",
-        "dB/dt z component: channel 30 (pV/(Am^4))",
-        "dBdtZch30.png",
-    ),
-    "dBdtZch35": (
-        "dB/dt z component 1.16 ms after turnoff",
-        "dB/dt z component: channel 35 (pV/(Am^4))",
-        "dBdtZch35.png",
-    ),
-    "dBdtZch40": (
-        "dB/dt z component 2.36 ms after turnoff",
-        "dB/dt z component: channel 40 (pV/(Am^4))",
-        "dBdtZch40.png",
-    ),
-    "dBdtZch45": (
-        "dB/dt z component 4.74 ms after turnoff",
-        "dB/dt z component: channel 45 (pV/(Am^4))",
-        "dBdtZch45.png",
-    ),
-    "DigitalTerrainModel": (
+    "DTM": (
         "Digital Terrain Model",
         "Digital Terrain Model (m)",
-        "DigitalTerrainModel.png",
+        "DTM.png",
     ),
     "FlightPath": (
         "Flight Path",
         "",
-        "",
+        None,  # No legend
     ),
-    "SusceptibilityDepthSlice25m": (
-        "Susceptibility Depth Slice - 25m",
-        "Relative Susceptibility (SI)",
-        "Susceptibility 25m.png",
-    ),
-    "TotalFieldMagnetics": (
+    "TMI": (
         "Total Magnetic Intensity",
         "Total Magnetic Intensity (nT)",
-        "Total Field Magnetics.png",
+        "TMI.png",
     ),
-    "TotalFieldMagneticsRTP": (
+    "TMI_RTP": (
         "TMI Reduced to Pole",
         "Total Magnetic Intensity Reduced to Pole (nT)",
-        "Total Field Magnetics RTP.png",
+        "TotalFieldMagneticsRTP.png",
     ),
-    "TotalFieldMagneticsRTPAS": (
+    "TMI_RTP_AS": (
         "Analytical Signal",
         "Analytical Signal (nT/m)",
-        "Total Field MagneticsRTPAS.png",
+        "TMI_RTP_AS.png",
     ),
-    "TotalFieldMagneticsRTPHDTDR": (
+    "TMI_RTP_HD_TDR": (
         "Horizontal Derivative of the Tilt",
         "Tilt Horizontal Derivative : TMI Reduced to Pole (rad/m)",
-        "TotalFieldMagneticsRTPHDTDR.png",
+        "TMI_RTP_HD_TDR.png",
     ),
-    "TotalFieldMagneticsRTPregional1500m": (
-        "Regional Filtered - 1500 m",
-        "Regional Filtered: TMI Reduced to Pole (nT)",
-        "TotalFieldMagneticsRTPRegional1500m.png",
-    ),
-    "TotalFieldMagneticsRTPRMI": (
+    "TMI_RTP_RMI": (
         "Residual Magnetic Intensity",
         "IGRF corrected TMI (nT)",
-        "TotalFieldMagneticsRTPRMI.png",
+        "TMI_RTP_RMI.png",
     ),
-    "TotalFieldMagneticsRTPresidual1500m": (
-        "Residual Filtered - 1500 m",
-        "Residual Filtered: TMI Reduced to Pole (nT)",
-        "TotalFieldMagneticsRTPresidual1500m.png",
-    ),
-    "TotalFieldMagneticsRTPTDR": (
+    "TMI_RTP_TDR": (
         "Tilt Derivative",
         "Tilt Derivative: TMI Reduced to Pole (rad)",
-        "Total Field Magnetics RTP TDR.png",
+        "TMI_RTP_TDR.png",
     ),
-    "TotalFieldMagneticsRTPTHDR": (
+    "TMI_RTP_THDR": (
         "Total Horizontal Gradient",
         "Total Horizontal Gradient: TMI Reduced to Pole (nT/m)",
-        "Total Field Magnetics RTP THDR.png",
+        "TMI_RTP_THDR.png",
     ),
-    "TotalFieldMagneticsRTPVD1": (
+    "TMI_RTP_VD1": (
         "First Vertical Derivative",
         "First Vertical Derivative: TMI Reduced to Pole (nT/m)",
-        "TotalFieldMagneticsRTPVD1.png",
+        "TMI_RTP_VD1.png",
+    ),
+    "Th-K_Ratio": (
+        "Thorium / Potassium Ratio",
+        "Th / K Ratio",
+        "Th-K_Ratio",
+    ),
+    "U-K_Ratio": (
+        "Uranium / Potassium Ratio",
+        "U / K Ratio",
+        "U-K_Ratio",
+    ),
+    "U-Th_Ratio": (
+        "Uranium / Thorium Ratio",
+        "U / Th Ratio",
+        "U-Th_Ratio",
+    ),
+    "Ternary": (
+        "Radiometric Ternary Image",
+        "",
+        "Ternary.png",
+    ),
+    "Total_NASVD": (
+        "Radiometric Total Count",
+        "Counts (cps)",
+        "Total_NASVD.png",
+    ),
+    "Th_NASVD": (
+        "Thorium NASVD Processed",
+        "Thorium %",
+        "Th_NASVD.png",
+    ),
+    "U_NASVD": (
+        "Uranium NASVD Processed",
+        "Uranium %",
+        "U_NASVD.png",
+    ),
+    "K_NASVD": (
+        "Potassium NASVD Processed",
+        "Potassium %",
+        "K_NASVD.png",
     ),
 }
-import os
 
 
 class LayoutEditor:
@@ -141,6 +132,11 @@ class LayoutEditor:
 
     def __init__(self, client_location=DEFAULT_CLIENT_LOCATION):
         self.client_location = client_location
+
+        # Path to transparency style QML inside plugin folder
+        self.transparency_qml = os.path.join(
+            os.path.dirname(__file__), "transparency_style.qml"
+        )
 
     def set_client_location(self, client_location):
         """Update the client location text"""
@@ -156,6 +152,57 @@ class LayoutEditor:
         start_idx = match_prefix.end() if match_prefix else 0
         remaining_name = basename_no_ext[start_idx:].strip()
 
+        # 🔹 Conductivity depth slices
+        match_conductivity = re.search(
+            r"ConductivityDepthSlice\s*(\d+m)$", remaining_name
+        )
+        if match_conductivity:
+            depth_value = match_conductivity.group(1)
+            title_text = remaining_name.replace(match_conductivity.group(0), "").strip()
+            map_desc = f"Conductivity Depth Slice\n{depth_value.replace('m',' m')}"
+            units_text = "Conductivity (S/m)"
+            legend_file = "Conductivity.png"
+            return title_text, map_desc, units_text, legend_file
+
+        # 🔹 Susceptibility depth slices
+        match_susceptibility = re.search(
+            r"SusceptibilityDepthSlice\s*(\d+m)$", remaining_name
+        )
+        if match_susceptibility:
+            depth_value = match_susceptibility.group(1)
+            title_text = remaining_name.replace(
+                match_susceptibility.group(0), ""
+            ).strip()
+            map_desc = f"Susceptibility Depth Slice\n{depth_value.replace('m',' m')}"
+            units_text = "Relative Susceptibility (SI)"
+            legend_file = "Susceptibility.png"
+            return title_text, map_desc, units_text, legend_file
+
+        # 🔹 Residual Filtered variable depths
+        match_residual = re.search(
+            r"TotalFieldMagneticsRTPresidual\s*(\d+m)$", remaining_name, re.IGNORECASE
+        )
+        if match_residual:
+            depth_value = match_residual.group(1)
+            title_text = remaining_name.replace(match_residual.group(0), "").strip()
+            map_desc = f"Residual Filtered - {depth_value.replace('m',' m')}"
+            units_text = "Residual Filtered: TMI Reduced to Pole (nT)"
+            legend_file = "TotalFieldMagneticsRTPResidual.png"
+            return title_text, map_desc, units_text, legend_file
+
+        # 🔹 Regional Filtered variable depths
+        match_regional = re.search(
+            r"TotalFieldMagneticsRTPregional\s*(\d+m)$", remaining_name, re.IGNORECASE
+        )
+        if match_regional:
+            depth_value = match_regional.group(1)
+            title_text = remaining_name.replace(match_regional.group(0), "").strip()
+            map_desc = f"Regional Filtered - {depth_value.replace('m',' m')}"
+            units_text = "Regional Filtered: TMI Reduced to Pole (nT)"
+            legend_file = "TotalFieldMagneticsRTPRegional.png"
+            return title_text, map_desc, units_text, legend_file
+
+        # 🔹 Regular lookup fallback
         matched_key = None
         for key in sorted(DESCRIPTION_LOOKUP.keys(), key=len, reverse=True):
             if remaining_name.endswith(key):
@@ -179,6 +226,14 @@ class LayoutEditor:
     def create_layout(self, template_path, layout_name):
         """Creates a new layout from template"""
         try:
+            project = QgsProject.instance()
+            layout_manager = project.layoutManager()
+
+            if layout_manager.layoutByName(layout_name):
+                raise RuntimeError(
+                    f'Map layout "{layout_name}" already exists. Choose a different name.'
+                )
+
             if not os.path.exists(template_path):
                 raise FileNotFoundError("Template file not found")
 
@@ -186,13 +241,6 @@ class LayoutEditor:
                 template_content = file.read()
             doc = QDomDocument()
             doc.setContent(template_content)
-
-            project = QgsProject.instance()
-            layout_manager = project.layoutManager()
-
-            existing_layout = layout_manager.layoutByName(layout_name)
-            if existing_layout:
-                layout_manager.removeLayout(existing_layout)
 
             layout = QgsPrintLayout(project)
             layout.initializeDefaults()
@@ -216,9 +264,10 @@ class LayoutEditor:
             project = QgsProject.instance()
             layout_manager = project.layoutManager()
 
-            existing_layout = layout_manager.layoutByName(new_name)
-            if existing_layout:
-                layout_manager.removeLayout(existing_layout)
+            if layout_manager.layoutByName(new_name):
+                raise RuntimeError(
+                    f'Map layout "{new_name}" already exists. Choose a different name.'
+                )
 
             new_layout = source_layout.clone()
             new_layout.setName(new_name)
@@ -230,15 +279,20 @@ class LayoutEditor:
             return None
 
     def update_map_item(self, layout, raster_layer):
-        """Updates the map item with the raster layer"""
+        """Updates the map item with the raster layer,
+        preserving scale and extent from duplication"""
         try:
+            if (
+                not isinstance(raster_layer, QgsRasterLayer)
+                or not raster_layer.isValid()
+            ):
+                print("geotiff search was not found")
+                return False
+
             map_item = layout.itemById("SatMap")
             if isinstance(map_item, QgsLayoutItemMap):
                 map_item.setLayers([raster_layer])
-                extent = raster_layer.extent()
-                if not extent.isEmpty():
-                    map_item.zoomToExtent(extent)
-                    map_item.refresh()
+                map_item.refresh()
                 return True
         except Exception as e:
             print(f"Error updating map item: {str(e)}")
@@ -249,7 +303,8 @@ class LayoutEditor:
         try:
             item = layout.itemById(item_id)
             if isinstance(item, QgsLayoutItemLabel):
-                item.setText(text)
+                if text:
+                    item.setText(text)
                 return True
         except Exception as e:
             print(f"Error updating text item: {str(e)}")
@@ -258,14 +313,18 @@ class LayoutEditor:
     def update_picture_item(self, layout, item_id, picture_path):
         """Updates a picture item in the layout"""
         try:
+            if not picture_path:
+                return True  # Skip if no legend is required (e.g., FlightPath)
+
+            if not os.path.exists(picture_path):
+                print("geotiff legend not found")
+                return False
+
             item = layout.itemById(item_id)
             if isinstance(item, QgsLayoutItemPicture):
-                if os.path.exists(picture_path):
-                    item.setPicturePath(picture_path)
-                    item.refresh()
-                    return True
-                else:
-                    print(f"Picture file not found: {picture_path}")
+                item.setPicturePath(picture_path)
+                item.refresh()
+                return True
         except Exception as e:
             print(f"Error updating picture item: {str(e)}")
         return False
@@ -277,3 +336,47 @@ class LayoutEditor:
         except Exception as e:
             print(f"Error getting item by ID: {str(e)}")
             return None
+
+    # 🔹 Apply QML style for transparency
+    def apply_transparency_style(self, raster_layer: QgsRasterLayer):
+        """Apply predefined QML style (transparency) to raster"""
+        try:
+            if not isinstance(raster_layer, QgsRasterLayer):
+                print("Not a raster layer")
+                return False
+
+            if not os.path.exists(self.transparency_qml):
+                print(f"Transparency QML not found: {self.transparency_qml}")
+                return False
+
+            success, error_message = raster_layer.loadNamedStyle(self.transparency_qml)
+            if not success:
+                print(f"Failed to apply transparency QML: {error_message}")
+                return False
+
+            raster_layer.triggerRepaint()
+            print(f"Applied QML transparency style to: {raster_layer.name()}")
+            return True
+        except Exception as e:
+            print(f"Error applying transparency style: {str(e)}")
+            return False
+
+    # 🔹 Hide all other layers except exceptions
+    def hide_other_layers(self, keep_layer: QgsRasterLayer):
+        """Hide all layers except exceptions and the keep_layer"""
+        project = QgsProject.instance()
+        layer_tree = project.layerTreeRoot()
+
+        for child in layer_tree.children():
+            layer = child.layer()
+            if layer is None:
+                continue
+
+            if layer == keep_layer or layer.name() in EXCEPTION_LAYERS:
+                child.setItemVisibilityChecked(True)
+            else:
+                child.setItemVisibilityChecked(False)
+
+        print(
+            f"Applied hide-other-layers. Kept {keep_layer.name()} and exceptions: {EXCEPTION_LAYERS}"
+        )

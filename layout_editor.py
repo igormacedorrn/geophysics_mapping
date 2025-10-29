@@ -13,7 +13,7 @@ import os
 
 
 # Default client information
-DEFAULT_CLIENT_LOCATION = "Axiom Exploration\nRio de Janeiro, Brazil"
+DEFAULT_CLIENT_LOCATION = "Greenridge Exploration\nSaskatchewan, Canada"
 
 # Layers that should never be hidden
 EXCEPTION_LAYERS = {
@@ -34,6 +34,41 @@ DESCRIPTION_LOOKUP = {
         "dB/dt z component: channel 10 (pV/(Am^4))",
         "dBdtZch10.png",
     ),
+    "dBdtZch15": (
+        "dB/dt z component 0.045 ms after turnoff",
+        "dB/dt z component: channel 15 (pV/(Am^4))",
+        "dBdtZch15.png",
+    ),
+    "dBdtZch20": (
+        "dB/dt z component 0.12 ms after turnoff",
+        "dB/dt z component: channel 20 (pV/(Am^4))",
+        "dBdtZch20.png",
+    ),
+    "dBdtZch25": (
+        "dB/dt z component 0.26 ms after turnoff",
+        "dB/dt z component: channel 25 (pV/(Am^4))",
+        "dBdtZch25.png",
+    ),
+    "dBdtZch30": (
+        "dB/dt z component 0.56 ms after turnoff",
+        "dB/dt z component: channel 30 (pV/(Am^4))",
+        "dBdtZch30.png",
+    ),
+    "dBdtZch35": (
+        "dB/dt z component 1.16 ms after turnoff",
+        "dB/dt z component: channel 35 (pV/(Am^4))",
+        "dBdtZch35.png",
+    ),
+    "dBdtZch40": (
+        "dB/dt z component 2.36 ms after turnoff",
+        "dB/dt z component: channel 40 (pV/(Am^4))",
+        "dBdtZch40.png",
+    ),
+    "dBdtZch45": (
+        "dB/dt z component 4.74 ms after turnoff",
+        "dB/dt z component: channel 45 (pV/(Am^4))",
+        "dBdtZch45.png",
+    ),
     "DTM": (
         "Digital Terrain Model",
         "Digital Terrain Model (m)",
@@ -50,9 +85,9 @@ DESCRIPTION_LOOKUP = {
         "TMI.png",
     ),
     "TMI_RTP": (
-        "TMI Reduced to Pole",
-        "Total Magnetic Intensity Reduced to Pole (nT)",
-        "TotalFieldMagneticsRTP.png",
+        "Reduced to Pole TMI",
+        "Total Magnetic Intensity : Reduced to Pole (nT)",
+        "TMI_RTP.png",
     ),
     "TMI_RTP_AS": (
         "Analytical Signal",
@@ -61,7 +96,7 @@ DESCRIPTION_LOOKUP = {
     ),
     "TMI_RTP_HD_TDR": (
         "Horizontal Derivative of the Tilt",
-        "Tilt Horizontal Derivative : TMI Reduced to Pole (rad/m)",
+        "Tilt Horizontal Derivative : Reduced to Pole TMI (rad/m)",
         "TMI_RTP_HD_TDR.png",
     ),
     "TMI_RTP_RMI": (
@@ -71,17 +106,17 @@ DESCRIPTION_LOOKUP = {
     ),
     "TMI_RTP_TDR": (
         "Tilt Derivative",
-        "Tilt Derivative: TMI Reduced to Pole (rad)",
+        "Tilt Derivative: Reduced to Pole TMI (rad)",
         "TMI_RTP_TDR.png",
     ),
     "TMI_RTP_THDR": (
         "Total Horizontal Gradient",
-        "Total Horizontal Gradient: TMI Reduced to Pole (nT/m)",
+        "Total Horizontal Gradient: Reduced to Pole TMI (nT/m)",
         "TMI_RTP_THDR.png",
     ),
     "TMI_RTP_VD1": (
         "First Vertical Derivative",
-        "First Vertical Derivative: TMI Reduced to Pole (nT/m)",
+        "First Vertical Derivative: Reduced to Pole TMI (nT/m)",
         "TMI_RTP_VD1.png",
     ),
     "Th-K_Ratio": (
@@ -101,7 +136,7 @@ DESCRIPTION_LOOKUP = {
     ),
     "Ternary": (
         "Radiometric Ternary Image",
-        "",
+        None,  # No units
         "Ternary.png",
     ),
     "Total_NASVD": (
@@ -111,17 +146,17 @@ DESCRIPTION_LOOKUP = {
     ),
     "Th_NASVD": (
         "Thorium NASVD Processed",
-        "Thorium %",
+        "Thorium (ppm)",
         "Th_NASVD.png",
     ),
     "U_NASVD": (
         "Uranium NASVD Processed",
-        "Uranium %",
+        "Uranium (ppm)",
         "U_NASVD.png",
     ),
     "K_NASVD": (
         "Potassium NASVD Processed",
-        "Potassium %",
+        "Potassium (%)",
         "K_NASVD.png",
     ),
 }
@@ -153,53 +188,49 @@ class LayoutEditor:
         remaining_name = basename_no_ext[start_idx:].strip()
 
         # 🔹 Conductivity depth slices
-        match_conductivity = re.search(
-            r"ConductivityDepthSlice\s*(\d+m)$", remaining_name
-        )
+        match_conductivity = re.search(r"Conductivity\s*(\d+m)$", remaining_name)
         if match_conductivity:
             depth_value = match_conductivity.group(1)
             title_text = remaining_name.replace(match_conductivity.group(0), "").strip()
             map_desc = f"Conductivity Depth Slice\n{depth_value.replace('m',' m')}"
-            units_text = "Conductivity (S/m)"
+            units_text = "Conductivity (mS/m)"
             legend_file = "Conductivity.png"
             return title_text, map_desc, units_text, legend_file
 
         # 🔹 Susceptibility depth slices
-        match_susceptibility = re.search(
-            r"SusceptibilityDepthSlice\s*(\d+m)$", remaining_name
-        )
+        match_susceptibility = re.search(r"Susceptibility\s*(\d+m)$", remaining_name)
         if match_susceptibility:
             depth_value = match_susceptibility.group(1)
             title_text = remaining_name.replace(
                 match_susceptibility.group(0), ""
             ).strip()
             map_desc = f"Susceptibility Depth Slice\n{depth_value.replace('m',' m')}"
-            units_text = "Relative Susceptibility (SI)"
+            units_text = "Susceptibility (SI)"
             legend_file = "Susceptibility.png"
             return title_text, map_desc, units_text, legend_file
 
         # 🔹 Residual Filtered variable depths
         match_residual = re.search(
-            r"TotalFieldMagneticsRTPresidual\s*(\d+m)$", remaining_name, re.IGNORECASE
+            r"TMI_RTP_residual\s*(\d+m)$", remaining_name, re.IGNORECASE
         )
         if match_residual:
             depth_value = match_residual.group(1)
             title_text = remaining_name.replace(match_residual.group(0), "").strip()
             map_desc = f"Residual Filtered - {depth_value.replace('m',' m')}"
-            units_text = "Residual Filtered: TMI Reduced to Pole (nT)"
-            legend_file = "TotalFieldMagneticsRTPResidual.png"
+            units_text = "Residual Filtered: Reduced to Pole TMI (nT)"
+            legend_file = "TMI_RTP_residual.png"
             return title_text, map_desc, units_text, legend_file
 
         # 🔹 Regional Filtered variable depths
         match_regional = re.search(
-            r"TotalFieldMagneticsRTPregional\s*(\d+m)$", remaining_name, re.IGNORECASE
+            r"TMI_RTP_regional\s*(\d+m)$", remaining_name, re.IGNORECASE
         )
         if match_regional:
             depth_value = match_regional.group(1)
             title_text = remaining_name.replace(match_regional.group(0), "").strip()
             map_desc = f"Regional Filtered - {depth_value.replace('m',' m')}"
-            units_text = "Regional Filtered: TMI Reduced to Pole (nT)"
-            legend_file = "TotalFieldMagneticsRTPRegional.png"
+            units_text = "Regional Filtered: Reduced to Pole TMI (nT)"
+            legend_file = "TMI_RTP_regional.png"
             return title_text, map_desc, units_text, legend_file
 
         # 🔹 Regular lookup fallback

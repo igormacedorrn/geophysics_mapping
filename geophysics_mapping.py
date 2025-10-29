@@ -21,6 +21,9 @@
  *                                                                         *
  ***************************************************************************/
 """
+import os
+import re
+
 from qgis.PyQt.QtCore import QSettings, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
@@ -30,12 +33,10 @@ from qgis.core import (
     QgsProject,
     QgsRasterLayer,
     QgsMapLayerType,
+    QgsReadWriteContext,
 )
 
 from .layout_editor import LayoutEditor
-
-import os
-import re
 
 
 class GeophysicsMapping:
@@ -56,7 +57,11 @@ class GeophysicsMapping:
         self.actions = []
         self.menu = self.tr("&Geophysics Mapping")
         self.first_start = None
-        self.current_layout = None  # will store the most recent layout
+        self.current_layout = None
+        # Active template path (persisted layout)
+        self.active_template_path = os.path.join(
+            self.plugin_dir, "templates", "Geophysics_SurveyMaps_Active.qpt"
+        )
 
     def tr(self, message):
         return QCoreApplication.translate("GeophysicsMapping", message)
@@ -92,7 +97,9 @@ class GeophysicsMapping:
         return action
 
     def initGui(self):
-        icon_path = r"/plugins/geophysics_mapping/icon.png"
+        icon_path = os.path.join(
+            self.plugin_dir, "icon.png"
+        )  # can't have absolute path, use self.plugin_dir instead
         self.add_action(
             icon_path,
             text=self.tr("Geophysics Mapping"),
@@ -112,6 +119,7 @@ class GeophysicsMapping:
             ui_path = os.path.join(self.plugin_dir, "geophysics_mapping_dialog_base.ui")
             self.dlg = uic.loadUi(ui_path)
 
+            # Configure file pickers
             self.dlg.TemplatemQgsFileWidget.setDialogTitle("Select Geophysics Template")
             self.dlg.TemplatemQgsFileWidget.setFilter("QGIS Layout Template (*.qpt)")
 
@@ -132,6 +140,7 @@ class GeophysicsMapping:
             default_legend = os.path.join(self.plugin_dir, "default_legend.png")
             self.dlg.LegendQgsFileWidget.setFilePath(default_legend)
 
+            # Connect Create button
             self.dlg.CreatePushButton.clicked.connect(self.create_layout_from_template)
 
         self.dlg.show()
@@ -148,49 +157,85 @@ class GeophysicsMapping:
         if raster_layer.isValid():
             QgsProject.instance().addMapLayer(raster_layer)
             return raster_layer
-        else:
-            return None
+        return None
 
     def create_layout_from_template(self):
         try:
+            print("Create button clicked - starting layout generation")
+
+            # UI inputs
             template_path = self.dlg.TemplatemQgsFileWidget.filePath()
             raster_path = self.dlg.GeotiffQgsFileWidget.filePath()
-            user_text = self.dlg.MapLayoutTextEdit.toPlainText().strip()
+            layout_name_text = self.dlg.MapLayoutTextEdit.toPlainText().strip()
+            client_location_text = self.dlg.ClientLocationLayoutTextEdit.toPlainText()
+
+            # Use user-entered Client-Location text (preserve newlines)
+            self.layout_editor.set_client_location(client_location_text)
+
+            # sanitize layout name
             layout_name = "Geophysics_Map"
-            if user_text:
-                layout_name = re.sub(r'[\\/:*?"<>|]', "", user_text)
+            if layout_name_text:
+                layout_name = re.sub(r'[\\/:*?"<>|]', "", layout_name_text)
 
-            # Create or duplicate layout
-            if self.current_layout is None:
-                # First layout - create from template
-                layout = self.layout_editor.create_layout(template_path, layout_name)
+            # Save the currently active layout to the 'Active' template BEFORE creating the new one,
+            # but only if there is a current_layout (i.e., this is not the first creation in this session).
+            if self.current_layout is not None:
+                project = QgsProject.instance()
+                layout_manager = project.layoutManager()
+                # ensure the layout still exists in the project (it should)
+                existing = layout_manager.layoutByName(self.current_layout.name())
+                if existing:
+                    # overwrite the active template
+                    existing.saveAsTemplate(
+                        self.active_template_path, QgsReadWriteContext()
+                    )
+                    print(f"Saved active layout template: {self.active_template_path}")
+
+            # Determine which template to use:
+            # - If active template exists, use it (persistence)
+            # - Otherwise use the template selected in the UI (first run)
+            if os.path.exists(self.active_template_path):
+                use_template = self.active_template_path
             else:
-                # Subsequent layouts - duplicate the last one created
-                layout = self.layout_editor.duplicate_layout(
-                    self.current_layout, layout_name
-                )
+                use_template = template_path
 
+            # Create a new layout from the chosen template (so every map opens in a new layout)
+            layout = self.layout_editor.create_layout(use_template, layout_name)
             if not layout:
+                print("Layout could not be created.")
                 return
 
-            # Process raster and update layout
+            # Process raster and apply the correct QML style
             if os.path.exists(raster_path):
                 raster_layer = self.get_or_load_raster_layer(raster_path)
                 if raster_layer:
-                    # 🔹 Apply white background transparency
-                    self.layout_editor.apply_transparency_style(raster_layer)
+                    # FlightPath detection
+                    if "flightpath" in os.path.basename(raster_path).lower():
+                        qml_file = os.path.join(
+                            self.plugin_dir, "templates", "flightpath_style.qml"
+                        )
+                    else:
+                        qml_file = os.path.join(
+                            self.plugin_dir, "templates", "transparency_style.qml"
+                        )
 
-                    # 🔹 Hide other layers except exceptions + this raster
+                    # Apply style
+                    self.layout_editor.apply_style_qml(raster_layer, qml_file)
+
+                    # Hide other layers (leave exceptions)
                     self.layout_editor.hide_other_layers(raster_layer)
 
-                    # Update layout with raster
-                    self.layout_editor.update_map_item(layout, raster_layer)
+                    # Zoom to raster extent only for the first map of the session (current_layout is None)
+                    zoom_flag = self.current_layout is None
+                    # Update map item (and optional zoom)
+                    self.layout_editor.update_map_item(
+                        layout, raster_layer, zoom_to_extent=zoom_flag
+                    )
 
-                    # Get map information and update layout items
+                    # Update other text/picture items
                     title_text, map_desc, units_text, legend_file = (
                         self.layout_editor.get_map_info(raster_path)
                     )
-
                     self.layout_editor.update_text_item(layout, "Title", title_text)
                     self.layout_editor.update_text_item(
                         layout, "Client-Location", self.layout_editor.client_location
@@ -202,7 +247,7 @@ class GeophysicsMapping:
                         layout, "Legend Unit", units_text
                     )
 
-                    # Handle legend file
+                    # Legend handling
                     legend_path = None
                     if legend_file:
                         raster_dir = os.path.dirname(raster_path)
@@ -211,7 +256,7 @@ class GeophysicsMapping:
                         if os.path.exists(candidate_path):
                             legend_path = candidate_path
 
-                    # Fallback to manually selected legend path
+                    # fallback to manually selected legend
                     if not legend_path or not os.path.exists(legend_path):
                         legend_path = self.dlg.LegendQgsFileWidget.filePath()
 
@@ -220,11 +265,10 @@ class GeophysicsMapping:
                             layout, "Legend (Oasis)", legend_path
                         )
 
-            # Store this layout as the most recent one
+            # Set the newly created layout as current_layout and open it in a designer window
             self.current_layout = layout
-
             self.iface.openLayoutDesigner(layout)
-            print(f"Layout '{layout_name}' created and opened successfully.")
+            print(f"Layout '{layout_name}' created and opened successfully")
 
         except Exception as e:
             import traceback

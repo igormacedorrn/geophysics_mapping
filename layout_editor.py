@@ -1,3 +1,5 @@
+import os
+import re
 from qgis.core import (
     QgsPrintLayout,
     QgsLayoutItemMap,
@@ -8,12 +10,7 @@ from qgis.core import (
     QgsRasterLayer,
 )
 from qgis.PyQt.QtXml import QDomDocument
-import re
-import os
 
-
-# Default client information
-DEFAULT_CLIENT_LOCATION = "Greenridge Exploration\nSaskatchewan, Canada"
 
 # Layers that should never be hidden
 EXCEPTION_LAYERS = {
@@ -22,7 +19,7 @@ EXCEPTION_LAYERS = {
     "property AOI",
 }
 
-# Description lookup dictionary for map types
+# Description lookup dictionary for map types (same as you had)
 DESCRIPTION_LOOKUP = {
     "AGL": (
         "Sensor Altitude",
@@ -89,10 +86,10 @@ DESCRIPTION_LOOKUP = {
         "Total Magnetic Intensity : Reduced to Pole (nT)",
         "TMI_RTP.png",
     ),
-    "TMI_RTP_AS": (
+    "TMI_AS": (
         "Analytical Signal",
         "Analytical Signal (nT/m)",
-        "TMI_RTP_AS.png",
+        "TMI_AS.png",
     ),
     "TMI_RTP_HD_TDR": (
         "Horizontal Derivative of the Tilt",
@@ -165,17 +162,41 @@ DESCRIPTION_LOOKUP = {
 class LayoutEditor:
     """Handles layout creation and manipulation"""
 
-    def __init__(self, client_location=DEFAULT_CLIENT_LOCATION):
-        self.client_location = client_location
-
-        # Path to transparency style QML inside plugin folder
-        self.transparency_qml = os.path.join(
-            os.path.dirname(__file__), "transparency_style.qml"
-        )
+    def __init__(self):
+        self.client_location = ""
+        # templates folder (contains QML/style and active qpt)
+        self.templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 
     def set_client_location(self, client_location):
-        """Update the client location text"""
-        self.client_location = client_location
+        """Sets the client-location text (preserving newlines)"""
+        if client_location is not None:
+            # normalize CRLF -> LF but keep newline characters
+            self.client_location = client_location.replace("\r\n", "\n")
+        else:
+            self.client_location = ""
+
+    def apply_style_qml(self, raster_layer: QgsRasterLayer, qml_file):
+        """Apply a given QML style to a raster layer"""
+        try:
+            if not isinstance(raster_layer, QgsRasterLayer):
+                print("Not a raster layer")
+                return False
+
+            if not os.path.exists(qml_file):
+                print(f"Style QML not found: {qml_file}")
+                return False
+
+            success, error_message = raster_layer.loadNamedStyle(qml_file)
+            if not success:
+                print(f"Failed to apply QML style: {error_message}")
+                return False
+
+            raster_layer.triggerRepaint()
+            print(f"Applied QML style: {os.path.basename(qml_file)}")
+            return True
+        except Exception as e:
+            print(f"Error applying QML style: {str(e)}")
+            return False
 
     def get_map_info(self, filename):
         """Extract map information from filename
@@ -187,7 +208,7 @@ class LayoutEditor:
         start_idx = match_prefix.end() if match_prefix else 0
         remaining_name = basename_no_ext[start_idx:].strip()
 
-        # 🔹 Conductivity depth slices
+        # Conductivity depth slices
         match_conductivity = re.search(r"Conductivity\s*(\d+m)$", remaining_name)
         if match_conductivity:
             depth_value = match_conductivity.group(1)
@@ -197,7 +218,7 @@ class LayoutEditor:
             legend_file = "Conductivity.png"
             return title_text, map_desc, units_text, legend_file
 
-        # 🔹 Susceptibility depth slices
+        # Susceptibility depth slices
         match_susceptibility = re.search(r"Susceptibility\s*(\d+m)$", remaining_name)
         if match_susceptibility:
             depth_value = match_susceptibility.group(1)
@@ -209,7 +230,7 @@ class LayoutEditor:
             legend_file = "Susceptibility.png"
             return title_text, map_desc, units_text, legend_file
 
-        # 🔹 Residual Filtered variable depths
+        # Residual Filtered variable depths
         match_residual = re.search(
             r"TMI_RTP_residual\s*(\d+m)$", remaining_name, re.IGNORECASE
         )
@@ -221,7 +242,7 @@ class LayoutEditor:
             legend_file = "TMI_RTP_residual.png"
             return title_text, map_desc, units_text, legend_file
 
-        # 🔹 Regional Filtered variable depths
+        # Regional Filtered variable depths
         match_regional = re.search(
             r"TMI_RTP_regional\s*(\d+m)$", remaining_name, re.IGNORECASE
         )
@@ -233,7 +254,7 @@ class LayoutEditor:
             legend_file = "TMI_RTP_regional.png"
             return title_text, map_desc, units_text, legend_file
 
-        # 🔹 Regular lookup fallback
+        # Regular lookup fallback
         matched_key = None
         for key in sorted(DESCRIPTION_LOOKUP.keys(), key=len, reverse=True):
             if remaining_name.endswith(key):
@@ -282,7 +303,7 @@ class LayoutEditor:
 
             layout.setName(layout_name)
             layout_manager.addLayout(layout)
-
+            print(f"Created layout from template: {os.path.basename(template_path)}")
             return layout
 
         except Exception as e:
@@ -309,20 +330,24 @@ class LayoutEditor:
             print(f"Error duplicating layout: {str(e)}")
             return None
 
-    def update_map_item(self, layout, raster_layer):
-        """Updates the map item with the raster layer,
-        preserving scale and extent from duplication"""
+    def update_map_item(self, layout, raster_layer, zoom_to_extent=False):
+        """Updates the map item with the raster layer and optionally zooms to raster extent"""
         try:
             if (
                 not isinstance(raster_layer, QgsRasterLayer)
                 or not raster_layer.isValid()
             ):
-                print("geotiff search was not found")
+                print("geotiff search was not found or raster invalid")
                 return False
 
             map_item = layout.itemById("SatMap")
             if isinstance(map_item, QgsLayoutItemMap):
                 map_item.setLayers([raster_layer])
+                if zoom_to_extent:
+                    try:
+                        map_item.zoomToExtent(raster_layer.extent())
+                    except Exception as e:
+                        print(f"Error zooming map item to extent: {e}")
                 map_item.refresh()
                 return True
         except Exception as e:
@@ -345,7 +370,7 @@ class LayoutEditor:
         """Updates a picture item in the layout"""
         try:
             if not picture_path:
-                return True  # Skip if no legend is required (e.g., FlightPath)
+                return True  # Skip if no legend is required
 
             if not os.path.exists(picture_path):
                 print("geotiff legend not found")
@@ -368,31 +393,35 @@ class LayoutEditor:
             print(f"Error getting item by ID: {str(e)}")
             return None
 
-    # 🔹 Apply QML style for transparency
     def apply_transparency_style(self, raster_layer: QgsRasterLayer):
-        """Apply predefined QML style (transparency) to raster"""
+        """Backward-compatible convenience method (keeps older name)"""
+        # prefer explicit QML via apply_style_qml, but keep this wrapper for compatibility
+        qml = os.path.join(self.templates_dir, "transparency_style.qml")
+        return self.apply_style_qml(raster_layer, qml)
+
+    def apply_style_qml(self, raster_layer: QgsRasterLayer, qml_file):
+        """Apply a given QML style to a raster layer (same as earlier method)"""
         try:
             if not isinstance(raster_layer, QgsRasterLayer):
                 print("Not a raster layer")
                 return False
 
-            if not os.path.exists(self.transparency_qml):
-                print(f"Transparency QML not found: {self.transparency_qml}")
+            if not os.path.exists(qml_file):
+                print(f"Style QML not found: {qml_file}")
                 return False
 
-            success, error_message = raster_layer.loadNamedStyle(self.transparency_qml)
+            success, error_message = raster_layer.loadNamedStyle(qml_file)
             if not success:
-                print(f"Failed to apply transparency QML: {error_message}")
+                print(f"Failed to apply QML style: {error_message}")
                 return False
 
             raster_layer.triggerRepaint()
-            print(f"Applied QML transparency style to: {raster_layer.name()}")
+            print(f"Applied QML style: {os.path.basename(qml_file)}")
             return True
         except Exception as e:
-            print(f"Error applying transparency style: {str(e)}")
+            print(f"Error applying QML style: {str(e)}")
             return False
 
-    # 🔹 Hide all other layers except exceptions
     def hide_other_layers(self, keep_layer: QgsRasterLayer):
         """Hide all layers except exceptions and the keep_layer"""
         project = QgsProject.instance()
@@ -408,6 +437,10 @@ class LayoutEditor:
             else:
                 child.setItemVisibilityChecked(False)
 
+        try:
+            kept_name = keep_layer.name() if keep_layer is not None else "None"
+        except Exception:
+            kept_name = "Unknown"
         print(
-            f"Applied hide-other-layers. Kept {keep_layer.name()} and exceptions: {EXCEPTION_LAYERS}"
+            f"Applied hide-other-layers. Kept {kept_name} and exceptions: {EXCEPTION_LAYERS}"
         )

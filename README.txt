@@ -1,4 +1,6 @@
 GEOPHYSICS MAPPING PLUGIN – G&R DIVISION
+
+-------
 OVERVIEW
 
 The Geophysics Mapping plugin automates map generation for geophysical survey data within QGIS.
@@ -18,6 +20,7 @@ FEATURES
 - Allows setting the Client-Location directly from the plugin interface (ClientLocationLayoutTextEdit)
 - First generated map automatically zooms to the GeoTIFF’s extent and location
 
+-------
 WORKFLOW
 1. Select a QGIS layout template (.qpt file)
 2. Choose a GeoTIFF raster file
@@ -79,28 +82,40 @@ Client-Location text is entered through the plugin UI
 Default layout template: Geophysics_SurveyMaps.qpt
 Active editable template: Geophysics_SurveyMaps_Active.qpt
 
-
+-------
 REQUIREMENTS
 - QGIS 3.34 or newer
 - Template file (.qpt format)
 - GeoTIFF raster files
 - Optional legend images (.png, .jpg, .svg, .pdf)
 
-RECENT UPDATES (v3.0.0)
-- Added persistent layout saving via Geophysics_SurveyMaps_Active.qpt to preserve user modifications
+-------
+RECENT UPDATES 
+
+v3.0.0 (October 29, 2025)
+- Added persistent layout saving via `Geophysics_SurveyMaps_Active.qpt` to preserve user modifications
 - First map creation now automatically zooms to GeoTIFF extent
 - Added conditional styling:
-	- flightpath_style.qml → for Flight Path rasters
-	- transparency_style.qml → for all other rasters
+
+  - `flightpath_style.qml` → for Flight Path rasters
+  - `transparency_style.qml` → for all other rasters
 
 - Client-Location field now populated from the plugin UI instead of a constant (on script)
 - Each new map automatically opens in a new Layout Designer window
-- Fixed plugin icon path to correctly load from icon.png in the plugin directory
+- Fixed plugin icon path to correctly load from `icon.png` in the plugin directory
 
+v3.1.0 (November 03, 2025)
+- Added Active Layers list: user can now select layers to remain visible at each map generation.
+  - layer selection persists for subsequent maps, user is now able to deselect at any time.
+  - removed global "EXCEPTION_LAYERS" constant as now each instance has self.exception_layers. Now the user must specify wich layers will remain visible.
+- Docsctrings, comments and script formatting improved for clarity and readability
+- Bugs fixed: edits can be done at any time and carried over to each subsequent map generated.
 
+-------
 AUTHOR
-------
-Igor Macedo (imacedo@axiomex.com)
+
+Igor Macedo (imacedo@axiomex.com)  
 Axiom Exploration
+
 Generated: August 22, 2025
-Last Updated: October 29, 2025
+Last Updated: November 03, 2025

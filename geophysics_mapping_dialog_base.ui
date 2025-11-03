@@ -6,9 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>447</width>
-    <height>435</height>
+    <width>387</width>
+    <height>605</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
   </property>
   <property name="windowTitle">
    <string>Geophysics Mapping</string>
@@ -85,8 +91,8 @@
   <widget class="QPushButton" name="CreatePushButton">
    <property name="geometry">
     <rect>
-     <x>310</x>
-     <y>390</y>
+     <x>220</x>
+     <y>560</y>
      <width>111</width>
      <height>31</height>
     </rect>
@@ -137,8 +143,34 @@
      <x>20</x>
      <y>200</y>
      <width>311</width>
-     <height>61</height>
+     <height>51</height>
     </rect>
+   </property>
+  </widget>
+  <widget class="QListWidget" name="layerslistWidget">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>360</y>
+     <width>311</width>
+     <height>192</height>
+    </rect>
+   </property>
+   <property name="selectionMode">
+    <enum>QAbstractItemView::MultiSelection</enum>
+   </property>
+  </widget>
+  <widget class="QLabel" name="ActiveLayerslabel">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>330</y>
+     <width>111</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Active Layers:</string>
    </property>
   </widget>
  </widget>

@@ -167,6 +167,12 @@ class LayoutEditor:
         # templates folder (contains QML/style and active qpt)
         self.templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 
+    def set_exception_layers(self, layers_set):
+        """Dynamically updates the exception layers from the main plugin."""
+        global EXCEPTION_LAYERS
+        EXCEPTION_LAYERS = set(layers_set)
+        print(f"Updated exception layers: {EXCEPTION_LAYERS}")
+
     def set_client_location(self, client_location):
         """Sets the client-location text (preserving newlines)"""
         if client_location is not None:
